@@ -13,6 +13,7 @@ const outFile = resolve(here, "../src/generated/docs.json");
 const assetsOut = resolve(here, "../public/docs-assets");
 const repoUrl =
   process.env.REPO_URL || "https://github.com/michaelsrichter/bank-manager-standalone";
+const skipRepoLinkCheck = process.env.DOCS_SKIP_REPO_LINK_CHECK === "1";
 
 function walk(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -54,7 +55,8 @@ for (const file of files) {
         return;
       }
       const repoPath = posix.normalize(posix.join("docs", target));
-      if (!existsSync(resolve(repoRoot, repoPath))) {
+      // Container builds only copy docs/, so repo-link checks run in CI and locally.
+      if (!skipRepoLinkCheck && !existsSync(resolve(repoRoot, repoPath))) {
         problems.push(`${key}: broken repo link ${href}`);
       }
       token.href = `${repoUrl}/blob/main/${repoPath.replace(/\/$/, "")}`;

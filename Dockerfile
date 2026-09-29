@@ -34,7 +34,7 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 COPY docs/ /src/docs/
-RUN npm run build
+RUN DOCS_SKIP_REPO_LINK_CHECK=1 npm run build
 
 FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
