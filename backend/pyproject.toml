@@ -17,6 +17,7 @@ ignore = ["S101"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-q --cov=bank_manager --cov-report=term-missing --cov-fail-under=70"
 
 [tool.coverage.run]
