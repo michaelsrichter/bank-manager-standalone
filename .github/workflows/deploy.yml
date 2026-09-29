@@ -1,0 +1,96 @@
+name: Deploy
+
+# Uniform `deploy` verb via Azure Developer CLI with GitHub OIDC (no client
+# secret). Inert until repository variables AZURE_ENV_NAME, AZURE_LOCATION,
+# AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID, AZURE_CLIENT_ID are configured
+# (`azd pipeline config`). See docs/operations/deploy.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  production:
+    if: vars.AZURE_ENV_NAME != '' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: Azure/setup-azd@v2
+      - name: Log in (federated / OIDC — no client secret)
+        run: |
+          azd auth login \
+            --client-id "${{ vars.AZURE_CLIENT_ID }}" \
+            --federated-credential-provider "github" \
+            --tenant-id "${{ vars.AZURE_TENANT_ID }}"
+      - name: azd up
+        run: azd up --no-prompt
+        env:
+          AZURE_PRINCIPAL_TYPE: ServicePrincipal
+          AZURE_GRANT_DEVELOPER_ACCESS: 'false'
+      - name: Smoke test health
+        run: |
+          url="$(azd env get-value SERVICE_WEB_URL)"
+          for i in $(seq 1 20); do
+            status="$(curl -s "$url/api/health" | jq -r .status || true)"
+            [ "$status" = "ready" ] && exit 0
+            sleep 15
+          done
+          echo "Health did not become ready" && exit 1
+
+  pr-preview:
+    # Ephemeral per-PR environment; torn down when the PR closes.
+    if: vars.AZURE_ENV_NAME != '' && github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    environment: preview
+    env:
+      AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}-pr${{ github.event.pull_request.number }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_PRINCIPAL_TYPE: ServicePrincipal
+      AZURE_GRANT_DEVELOPER_ACCESS: 'false'
+      AZURE_MONTHLY_BUDGET_USD: '20'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: Azure/setup-azd@v2
+      - run: |
+          azd auth login --client-id "${{ vars.AZURE_CLIENT_ID }}" \
+            --federated-credential-provider "github" --tenant-id "${{ vars.AZURE_TENANT_ID }}"
+      - run: azd up --no-prompt
+
+  pr-preview-cleanup:
+    if: vars.AZURE_ENV_NAME != '' && github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    environment: preview
+    env:
+      AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}-pr${{ github.event.pull_request.number }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Azure/setup-azd@v2
+      - run: |
+          azd auth login --client-id "${{ vars.AZURE_CLIENT_ID }}" \
+            --federated-credential-provider "github" --tenant-id "${{ vars.AZURE_TENANT_ID }}"
+      - run: azd down --force --purge --no-prompt

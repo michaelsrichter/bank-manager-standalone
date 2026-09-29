@@ -1,0 +1,24 @@
+[project]
+name = "bank-manager-demo"
+version = "1.0.0"
+description = "Governed bank-manager AI demo: ungoverned baseline vs ACS policy enforcement."
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=bank_manager --cov-report=term-missing --cov-fail-under=70"
+
+[tool.coverage.run]
+branch = true
+omit = ["bank_manager/evaluation_server.py"]

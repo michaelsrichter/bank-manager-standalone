@@ -1,0 +1,54 @@
+{
+  "$comment": "Config-driven model catalog (eps-demo-ai-models). The backend reads this file at startup and infra/resources.bicep reads it with loadJsonContent() to create the matching Foundry deployments, so swapping a model is a config change only. Prices are public Azure OpenAI Global Standard list prices in USD per 1M tokens; see docs/cost/cost-to-run.md.",
+  "roles": {
+    "intent": {
+      "description": "Turns one natural-language bank request into one structured bank tool call. The policy engine, not the model, decides whether the call is allowed.",
+      "defaultOption": "gpt-4.1",
+      "apiVersion": "2024-10-21",
+      "tokenScope": "https://cognitiveservices.azure.com/.default",
+      "temperature": 0,
+      "maxOutputTokens": 200,
+      "requestTimeoutSeconds": 20,
+      "prompt": {
+        "system": "config/prompts/intent-router.system.md",
+        "userTemplate": "config/prompts/intent-router.user.md"
+      },
+      "options": [
+        {
+          "key": "gpt-4.1",
+          "label": "GPT-4.1",
+          "deployment": "gpt-4.1",
+          "model": "gpt-4.1",
+          "version": "2025-04-14",
+          "format": "OpenAI",
+          "sku": "GlobalStandard",
+          "capacityThousandsTpm": 30,
+          "pricing": {
+            "currency": "USD",
+            "inputPer1MTokens": 2.0,
+            "cachedInputPer1MTokens": 0.5,
+            "outputPer1MTokens": 8.0,
+            "source": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/"
+          }
+        },
+        {
+          "key": "gpt-4.1-mini",
+          "label": "GPT-4.1 mini",
+          "deployment": "gpt-4.1-mini",
+          "model": "gpt-4.1-mini",
+          "version": "2025-04-14",
+          "format": "OpenAI",
+          "sku": "GlobalStandard",
+          "capacityThousandsTpm": 30,
+          "pricing": {
+            "currency": "USD",
+            "inputPer1MTokens": 0.4,
+            "cachedInputPer1MTokens": 0.1,
+            "outputPer1MTokens": 1.6,
+            "source": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/"
+          }
+        }
+      ]
+    }
+  }
+}

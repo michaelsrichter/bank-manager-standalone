@@ -1,0 +1,67 @@
+{
+  "version": "2.0.0",
+  // Wraps the uniform `make` verbs (eps-demo-devx). "Run All" starts every
+  // service in its own dedicated, color-coded terminal in one split group.
+  "tasks": [
+    {
+      "label": "🟧 backend",
+      "detail": "FastAPI on :8000 with FAKE_AI=1 (make dev-backend)",
+      "type": "shell",
+      "command": "make dev-backend",
+      "isBackground": true,
+      "presentation": { "panel": "dedicated", "group": "stack", "reveal": "always" },
+      "icon": { "id": "server-process", "color": "terminal.ansiYellow" },
+      "problemMatcher": {
+        "owner": "uvicorn",
+        "pattern": { "regexp": "^x^" },
+        "background": { "activesBegin": "Started reloader|Will watch", "beginsPattern": "Will watch|Started reloader", "endsPattern": "Application startup complete" }
+      }
+    },
+    {
+      "label": "🟦 frontend",
+      "detail": "Vite dev server on :5173, proxies /api (make dev-frontend)",
+      "type": "shell",
+      "command": "make dev-frontend",
+      "isBackground": true,
+      "presentation": { "panel": "dedicated", "group": "stack", "reveal": "always" },
+      "icon": { "id": "browser", "color": "terminal.ansiBlue" },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^x^" },
+        "background": { "beginsPattern": "VITE|build-info", "endsPattern": "Local:" }
+      }
+    },
+    {
+      "label": "Run All",
+      "dependsOn": ["🟧 backend", "🟦 frontend"],
+      "dependsOrder": "parallel",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "test",
+      "detail": "All tests with coverage gates (make test)",
+      "type": "shell",
+      "command": "make test",
+      "group": { "kind": "test", "isDefault": true },
+      "icon": { "id": "beaker", "color": "terminal.ansiGreen" },
+      "problemMatcher": []
+    },
+    {
+      "label": "lint",
+      "detail": "Guidance, ruff, eslint, prettier, tsc, bicep (make lint)",
+      "type": "shell",
+      "command": "make lint",
+      "icon": { "id": "check", "color": "terminal.ansiCyan" },
+      "problemMatcher": []
+    },
+    {
+      "label": "deploy",
+      "detail": "azd up (make deploy)",
+      "type": "shell",
+      "command": "make deploy",
+      "icon": { "id": "cloud-upload", "color": "terminal.ansiMagenta" },
+      "problemMatcher": []
+    }
+  ]
+}

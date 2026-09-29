@@ -1,0 +1,8 @@
+# Runtime dependencies. The ACS (agent-control-specification) wheel is built
+# from pinned Agent Governance Toolkit source: see Dockerfile and Makefile.
+azure-identity>=1.25.1,<2.0.0
+azure-monitor-opentelemetry>=1.8.0,<2.0.0
+fastapi>=0.118.0,<1.0.0
+openai>=1.107.0,<3.0.0
+pydantic>=2.8.2,<3.0.0
+uvicorn[standard]>=0.37.0,<1.0.0

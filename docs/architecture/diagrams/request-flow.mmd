@@ -1,0 +1,30 @@
+%%{init: {"theme": "base", "themeVariables": {"fontSize": "15px"}}}%%
+sequenceDiagram
+  autonumber
+  actor U as Browser
+  participant API as FastAPI (Container Apps)
+  participant M as Azure AI Foundry model
+  participant B as Baseline lane (no rules)
+  participant G as ACS governed lane
+  U->>API: POST /api/compare (prompt, persona, model, toggles)
+  API->>API: size check, rate limit, build persona snapshot server-side
+  API-->>U: run.started + step events (NDJSON, seq 1..n)
+  API->>M: structured output: pick ONE bank tool
+  M-->>API: tool name + args (+ token usage, response model)
+  API-->>U: model.usage + tool.selected
+  API->>B: run tool directly
+  B-->>API: raw result (fake SSN visible)
+  API-->>U: lane.result (baseline)
+  API->>G: check 1: input
+  API->>G: check 2: pre-tool (assignment, limits, approvals)
+  alt allowed
+    API->>G: run tool, check 3: post-tool redaction
+  else blocked or needs approval
+    G-->>API: deny / escalate (tool not run)
+  end
+  API-->>U: lane.result (governed) + run.completed
+  opt approval required
+    U->>API: POST /api/approval (approve or reject)
+    API->>G: re-evaluate, run only if still allowed
+    API-->>U: final governed result
+  end

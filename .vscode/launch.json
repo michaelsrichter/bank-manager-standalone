@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend (FastAPI, FAKE_AI)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["bank_manager.main:app_factory", "--factory", "--port", "8000"],
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "env": { "FAKE_AI": "1", "ACS_OPA_PATH": "${workspaceFolder}/.tools/opa" },
+      "justMyCode": true
+    },
+    {
+      "name": "Frontend (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/frontend",
+      "preLaunchTask": "🟦 frontend"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug All",
+      "configurations": ["Backend (FastAPI, FAKE_AI)", "Frontend (Chrome)"],
+      "stopAll": true
+    }
+  ]
+}

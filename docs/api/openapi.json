@@ -1,0 +1,281 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Bank Manager Governance Demo",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/config": {
+      "get": {
+        "summary": "Get Config",
+        "operationId": "get_config_api_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Config Api Config Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/compare": {
+      "post": {
+        "summary": "Compare",
+        "operationId": "compare_api_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/approval": {
+      "post": {
+        "summary": "Approval",
+        "operationId": "approval_api_approval_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/live": {
+      "get": {
+        "summary": "Live",
+        "operationId": "live_api_health_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Live Api Health Live Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telemetry/page-view": {
+      "post": {
+        "summary": "Page View",
+        "operationId": "page_view_api_telemetry_page_view_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageViewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PolicyState": {
+        "additionalProperties": false,
+        "properties": {
+          "restrictedMode": {
+            "default": false,
+            "title": "Restrictedmode",
+            "type": "boolean"
+          },
+          "customerApproved": {
+            "default": false,
+            "title": "Customerapproved",
+            "type": "boolean"
+          },
+          "adminMode": {
+            "default": false,
+            "title": "Adminmode",
+            "type": "boolean"
+          }
+        },
+        "title": "PolicyState",
+        "type": "object"
+      },
+      "CompareRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "prompt": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "personaId": {
+            "default": "M-101",
+            "maxLength": 16,
+            "title": "Personaid",
+            "type": "string"
+          },
+          "modelKey": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modelkey"
+          },
+          "policyState": {
+            "$ref": "#/components/schemas/PolicyState",
+            "default": {
+              "restrictedMode": false,
+              "customerApproved": false,
+              "adminMode": false
+            }
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "CompareRequest",
+        "type": "object"
+      },
+      "ToolAction": {
+        "additionalProperties": false,
+        "properties": {
+          "tool_name": {
+            "maxLength": 64,
+            "title": "Tool Name",
+            "type": "string"
+          },
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          }
+        },
+        "required": [
+          "tool_name",
+          "args"
+        ],
+        "title": "ToolAction",
+        "type": "object"
+      },
+      "ApprovalRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ToolAction"
+          },
+          "personaId": {
+            "maxLength": 16,
+            "title": "Personaid",
+            "type": "string"
+          },
+          "policyState": {
+            "$ref": "#/components/schemas/PolicyState",
+            "default": {
+              "restrictedMode": false,
+              "customerApproved": false,
+              "adminMode": false
+            }
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "personaId",
+          "decision"
+        ],
+        "title": "ApprovalRequest",
+        "type": "object"
+      },
+      "PageViewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "maxLength": 32,
+            "title": "Page",
+            "type": "string"
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "title": "PageViewRequest",
+        "type": "object"
+      }
+    }
+  }
+}

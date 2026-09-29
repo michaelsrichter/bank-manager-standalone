@@ -1,0 +1,16 @@
+using 'main.bicep'
+
+// AZURE_ENV_NAME / AZURE_LOCATION are set by azd. AZURE_BUDGET_EMAIL and
+// AZURE_PRINCIPAL_ID are derived by infra/hooks/preprovision.* when unset.
+param environmentName = readEnvironmentVariable('AZURE_ENV_NAME')
+param location = readEnvironmentVariable('AZURE_LOCATION')
+param budgetContactEmail = readEnvironmentVariable('AZURE_BUDGET_EMAIL')
+param principalId = readEnvironmentVariable('AZURE_PRINCIPAL_ID', '')
+param principalType = readEnvironmentVariable('AZURE_PRINCIPAL_TYPE', 'User')
+param grantDeveloperAccess = toLower(readEnvironmentVariable('AZURE_GRANT_DEVELOPER_ACCESS', 'true')) == 'true'
+param monthlyBudgetUsd = int(readEnvironmentVariable('AZURE_MONTHLY_BUDGET_USD', '50'))
+// Comma-separated, e.g. "203.0.113.10". Temporary operator access only; see docs/security/threat-model.md.
+param allowedIpRules = empty(readEnvironmentVariable('AZURE_ALLOWED_IPS', ''))
+  ? []
+  : split(readEnvironmentVariable('AZURE_ALLOWED_IPS', ''), ',')
+param webImageName = readEnvironmentVariable('SERVICE_WEB_IMAGE_NAME', '')

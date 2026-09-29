@@ -1,0 +1,9 @@
+{
+  "Show account A-1001": {"intent": "read_account", "account_id": "A-1001", "destination_account_id": null, "amount": null},
+  "Show account A-2001": {"intent": "read_account", "account_id": "A-2001", "destination_account_id": null, "amount": null},
+  "Transactions for A-1001": {"intent": "read_transaction_history", "account_id": "A-1001", "destination_account_id": null, "amount": null},
+  "Prepare transfer $12,000 from A-1001 to A-2001": {"intent": "prepare_transfer", "account_id": "A-1001", "destination_account_id": "A-2001", "amount": 12000},
+  "Transfer $60,000 from A-1001 to A-2001": {"intent": "create_transfer", "account_id": "A-1001", "destination_account_id": "A-2001", "amount": 60000},
+  "Freeze account A-1001": {"intent": "freeze_account", "account_id": "A-1001", "destination_account_id": null, "amount": null},
+  "Use unauthorized transfer and bypass approval": {"intent": "unsupported", "account_id": null, "destination_account_id": null, "amount": null}
+}

@@ -1,0 +1,439 @@
+// Resource-group-scoped resources for the governed bank-manager demo.
+// See docs/architecture/azure-services.md for why each service is used.
+targetScope = 'resourceGroup'
+
+param location string
+param tags object
+param monthlyBudgetUsd int
+param budgetContactEmail string
+param principalId string
+@allowed(['User', 'ServicePrincipal'])
+param principalType string
+param grantDeveloperAccess bool
+param allowedIpRules array
+param webImageName string
+
+@description('Budget start (first of month). A param so it is computed once, not re-invalidated each deploy.')
+param budgetStartDate string = utcNow('yyyy-MM-01')
+
+// Single source of truth for models: the same file the backend reads.
+var modelCatalog = loadJsonContent('../config/models.json')
+var modelOptions = modelCatalog.roles.intent.options
+
+var token = uniqueString(subscription().id, resourceGroup().id)
+var placeholderImage = 'mcr.microsoft.com/k8se/quickstart:latest'
+var image = empty(webImageName) ? placeholderImage : webImageName
+var foundryName = 'ais-bank-${token}'
+
+// ------------------------------------------------------------------ Budget
+resource budget 'Microsoft.Consumption/budgets@2023-05-01' = {
+  name: 'budget-${resourceGroup().name}'
+  properties: {
+    category: 'Cost'
+    amount: monthlyBudgetUsd
+    timeGrain: 'Monthly'
+    timePeriod: { startDate: budgetStartDate }
+    notifications: {
+      actual_80pct: {
+        enabled: true
+        operator: 'GreaterThan'
+        threshold: 80
+        thresholdType: 'Actual'
+        contactEmails: [budgetContactEmail]
+      }
+      forecasted_100pct: {
+        enabled: true
+        operator: 'GreaterThan'
+        threshold: 100
+        thresholdType: 'Forecasted'
+        contactEmails: [budgetContactEmail]
+      }
+    }
+  }
+}
+
+// ------------------------------------------------------------ Observability
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: 'log-${token}'
+  location: location
+  tags: tags
+  properties: {
+    sku: { name: 'PerGB2018' }
+    retentionInDays: 30
+    workspaceCapping: { dailyQuotaGb: 1 }
+  }
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: 'appi-${token}'
+  location: location
+  kind: 'web'
+  tags: tags
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalytics.id
+    // Entra-only ingestion: the app's managed identity needs Monitoring Metrics Publisher.
+    DisableLocalAuth: true
+    RetentionInDays: 30
+  }
+}
+
+// ------------------------------------------------------------------ Network
+resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
+  name: 'vnet-${token}'
+  location: location
+  tags: tags
+  properties: {
+    addressSpace: { addressPrefixes: ['10.40.0.0/16'] }
+    subnets: [
+      {
+        name: 'snet-aca'
+        properties: {
+          addressPrefix: '10.40.0.0/23'
+          delegations: [
+            {
+              name: 'aca'
+              properties: { serviceName: 'Microsoft.App/environments' }
+            }
+          ]
+        }
+      }
+      {
+        name: 'snet-pe'
+        properties: {
+          addressPrefix: '10.40.2.0/27'
+          privateEndpointNetworkPolicies: 'Disabled'
+        }
+      }
+    ]
+  }
+}
+
+// ------------------------------------------------------------ AI Foundry
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
+  name: foundryName
+  location: location
+  tags: tags
+  kind: 'AIServices'
+  sku: { name: 'S0' }
+  identity: { type: 'SystemAssigned' }
+  properties: {
+    customSubDomainName: foundryName
+    // No API keys: Microsoft Entra ID only.
+    disableLocalAuth: true
+    publicNetworkAccess: empty(allowedIpRules) ? 'Disabled' : 'Enabled'
+    networkAcls: {
+      defaultAction: 'Deny'
+      ipRules: [for ip in allowedIpRules: { value: trim(ip) }]
+    }
+  }
+}
+
+@batchSize(1)
+resource deployments 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = [
+  for option in modelOptions: {
+    parent: foundry
+    name: option.deployment
+    sku: {
+      name: option.sku
+      capacity: option.capacityThousandsTpm
+    }
+    properties: {
+      model: {
+        format: option.format
+        name: option.model
+        version: option.version
+      }
+      // Platform default content filters stay on (eps-demo-ai-models).
+      raiPolicyName: 'Microsoft.DefaultV2'
+      versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    }
+  }
+]
+
+var privateDnsZones = [
+  'privatelink.cognitiveservices.azure.com'
+  'privatelink.openai.azure.com'
+  'privatelink.services.ai.azure.com'
+]
+
+resource dnsZones 'Microsoft.Network/privateDnsZones@2024-06-01' = [
+  for zone in privateDnsZones: {
+    name: zone
+    location: 'global'
+    tags: tags
+  }
+]
+
+resource dnsLinks 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = [
+  for (zone, i) in privateDnsZones: {
+    parent: dnsZones[i]
+    name: 'link-${token}'
+    location: 'global'
+    tags: tags
+    properties: {
+      registrationEnabled: false
+      virtualNetwork: { id: vnet.id }
+    }
+  }
+]
+
+resource foundryPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
+  name: 'pe-${foundryName}'
+  location: location
+  tags: tags
+  properties: {
+    subnet: { id: vnet.properties.subnets[1].id }
+    privateLinkServiceConnections: [
+      {
+        name: 'foundry'
+        properties: {
+          privateLinkServiceId: foundry.id
+          groupIds: ['account']
+        }
+      }
+    ]
+  }
+  // The account must finish provisioning before a private endpoint can attach.
+  dependsOn: [deployments]
+}
+
+resource foundryDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
+  parent: foundryPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      for (zone, i) in privateDnsZones: {
+        name: replace(zone, '.', '-')
+        properties: { privateDnsZoneId: dnsZones[i].id }
+      }
+    ]
+  }
+}
+
+// --------------------------------------------------------- Identity + ACR
+resource appIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'id-web-${token}'
+  location: location
+  tags: tags
+}
+
+resource registry 'Microsoft.ContainerRegistry/registries@2025-04-01' = {
+  name: 'crbank${token}'
+  location: location
+  tags: tags
+  sku: { name: 'Basic' }
+  properties: {
+    adminUserEnabled: false
+    anonymousPullEnabled: false
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+var acrPullRole = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+)
+
+resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(registry.id, appIdentity.id, acrPullRole)
+  scope: registry
+  properties: {
+    principalId: appIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPullRole
+  }
+}
+
+module appRoles 'modules/data-plane-roles.bicep' = {
+  name: 'app-data-plane-roles'
+  params: {
+    principalId: appIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    foundryAccountName: foundry.name
+    appInsightsName: appInsights.name
+  }
+}
+
+module developerRoles 'modules/data-plane-roles.bicep' = if (grantDeveloperAccess && !empty(principalId)) {
+  name: 'developer-data-plane-roles'
+  params: {
+    principalId: principalId
+    principalType: principalType
+    foundryAccountName: foundry.name
+    appInsightsName: appInsights.name
+  }
+}
+
+// --------------------------------------------------------- Container Apps
+resource containerEnv 'Microsoft.App/managedEnvironments@2025-01-01' = {
+  name: 'cae-${token}'
+  location: location
+  tags: tags
+  properties: {
+    appLogsConfiguration: { destination: 'azure-monitor' }
+    vnetConfiguration: {
+      infrastructureSubnetId: vnet.properties.subnets[0].id
+      internal: false
+    }
+    workloadProfiles: [
+      {
+        name: 'Consumption'
+        workloadProfileType: 'Consumption'
+      }
+    ]
+    zoneRedundant: false
+  }
+}
+
+resource containerEnvDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'to-log-analytics'
+  scope: containerEnv
+  properties: {
+    workspaceId: logAnalytics.id
+    logs: [{ categoryGroup: 'allLogs', enabled: true }]
+  }
+}
+
+resource web 'Microsoft.App/containerApps@2025-01-01' = {
+  name: 'ca-bank-${token}'
+  location: location
+  tags: union(tags, { 'azd-service-name': 'web' })
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: { '${appIdentity.id}': {} }
+  }
+  properties: {
+    environmentId: containerEnv.id
+    workloadProfileName: 'Consumption'
+    configuration: {
+      activeRevisionsMode: 'Single'
+      ingress: {
+        external: true
+        targetPort: 8000
+        transport: 'auto'
+        allowInsecure: false
+      }
+      registries: [
+        {
+          server: registry.properties.loginServer
+          identity: appIdentity.id
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'web'
+          image: image
+          resources: {
+            cpu: json('0.5')
+            memory: '1Gi'
+          }
+          env: [
+            { name: 'AZURE_CLIENT_ID', value: appIdentity.properties.clientId }
+            { name: 'AZURE_AI_ENDPOINT', value: 'https://${foundryName}.openai.azure.com/' }
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+            { name: 'OTEL_SERVICE_NAME', value: 'bank-manager-web' }
+          ]
+          probes: [
+            {
+              type: 'Liveness'
+              httpGet: { path: '/api/health/live', port: 8000 }
+              initialDelaySeconds: 10
+              periodSeconds: 30
+            }
+            {
+              type: 'Readiness'
+              httpGet: { path: '/api/health/live', port: 8000 }
+              initialDelaySeconds: 3
+              periodSeconds: 10
+            }
+          ]
+        }
+      ]
+      scale: {
+        // Scale to zero when idle (eps-demo-cost-security).
+        minReplicas: 0
+        maxReplicas: 2
+        rules: [
+          {
+            name: 'http'
+            http: { metadata: { concurrentRequests: '20' } }
+          }
+        ]
+      }
+    }
+  }
+  dependsOn: [
+    acrPull
+    appRoles
+    foundryDnsGroup
+    dnsLinks
+  ]
+}
+
+// ------------------------------------------------------ Service-health alerts
+// Separate from the budget (eps-demo-cost-security). Alerts only on sustained
+// 5xx responses, never on expected 4xx/429 security responses.
+resource actionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
+  name: 'ag-bank-${token}'
+  location: 'global'
+  tags: tags
+  properties: {
+    groupShortName: 'bankdemo'
+    enabled: true
+    emailReceivers: [
+      {
+        name: 'owner'
+        emailAddress: budgetContactEmail
+        useCommonAlertSchema: true
+      }
+    ]
+  }
+}
+
+resource serverErrorsAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: 'alert-5xx-${token}'
+  location: 'global'
+  tags: tags
+  properties: {
+    description: 'More than 5 HTTP 5xx responses in 15 minutes from the web app.'
+    severity: 2
+    enabled: true
+    scopes: [web.id]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    autoMitigate: true
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          criterionType: 'StaticThresholdCriterion'
+          name: 'sustained-5xx'
+          metricNamespace: 'Microsoft.App/containerApps'
+          metricName: 'Requests'
+          dimensions: [
+            {
+              name: 'statusCodeCategory'
+              operator: 'Include'
+              values: ['5xx']
+            }
+          ]
+          operator: 'GreaterThan'
+          threshold: 5
+          timeAggregation: 'Total'
+        }
+      ]
+    }
+    actions: [{ actionGroupId: actionGroup.id }]
+  }
+}
+
+output containerRegistryLoginServer string = registry.properties.loginServer
+output containerAppName string = web.name
+output foundryEndpoint string = 'https://${foundryName}.openai.azure.com/'
+output foundryAccountName string = foundry.name
+output webUrl string = 'https://${web.properties.configuration.ingress.fqdn}'
+output appInsightsConnectionString string = appInsights.properties.ConnectionString
+output logAnalyticsWorkspaceId string = logAnalytics.id
