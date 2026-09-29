@@ -7,9 +7,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, Protocol
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict
 
+from .. import tracing
 from ..config import IntentRoleConfig, ModelOption
 
 
@@ -123,35 +125,60 @@ class OpenAIIntentRouter:
 
     def route(self, prompt: str, option: ModelOption) -> RoutingResult:
         started = self._clock()
-        try:
-            completion = self._client.beta.chat.completions.parse(
-                model=option.deployment,
-                messages=[
-                    {"role": "system", "content": self._config.system_prompt},
-                    {
-                        "role": "user",
-                        "content": self._config.user_template.replace("{prompt}", prompt),
-                    },
-                ],
-                response_format=BankIntent,
-                temperature=self._config.temperature,
-                max_tokens=self._config.max_output_tokens,
-            )
-        except Exception as error:
-            raise classify_model_error(error) from error
+        with tracing.chat_span(
+            deployment=option.deployment,
+            temperature=self._config.temperature,
+            max_tokens=self._config.max_output_tokens,
+            server_address=urlparse(str(getattr(self._client, "base_url", ""))).hostname,
+            fake=False,
+        ) as span:
+            try:
+                completion = self._client.beta.chat.completions.parse(
+                    model=option.deployment,
+                    messages=[
+                        {"role": "system", "content": self._config.system_prompt},
+                        {
+                            "role": "user",
+                            "content": self._config.user_template.replace("{prompt}", prompt),
+                        },
+                    ],
+                    response_format=BankIntent,
+                    temperature=self._config.temperature,
+                    max_tokens=self._config.max_output_tokens,
+                )
+            except Exception as error:
+                raise classify_model_error(error) from error
 
-        choice = completion.choices[0]
-        if getattr(choice, "finish_reason", None) == "content_filter":
-            raise ContentFilteredError("Azure AI content filtering blocked the response.")
-        message = choice.message
-        if getattr(message, "refusal", None):
-            raise IntentRoutingError("The model refused to route this request.")
-        if message.parsed is None:
-            raise IntentRoutingError("The model returned no structured intent.")
+            choice = completion.choices[0]
+            finish_reason = getattr(choice, "finish_reason", None)
+            usage = usage_from_completion(getattr(completion, "usage", None)) or Usage()
+            response_model = getattr(completion, "model", None)
+            message = choice.message
+            parsed = None if finish_reason == "content_filter" else message.parsed
+            action = action_from_intent(parsed) if parsed is not None else None
+            tracing.record_chat_result(
+                span,
+                deployment=option.deployment,
+                response_model=response_model,
+                response_id=getattr(completion, "id", None),
+                finish_reason=finish_reason,
+                input_tokens=usage.input_tokens,
+                cached_input_tokens=usage.cached_input_tokens,
+                output_tokens=usage.output_tokens,
+                reasoning_tokens=usage.reasoning_tokens,
+                tool_name=action["tool_name"] if action else None,
+                fake=False,
+            )
+            if finish_reason == "content_filter":
+                raise ContentFilteredError("Azure AI content filtering blocked the response.")
+            if getattr(message, "refusal", None):
+                raise IntentRoutingError("The model refused to route this request.")
+            if parsed is None:
+                raise IntentRoutingError("The model returned no structured intent.")
         return RoutingResult(
-            action=action_from_intent(message.parsed),
+            action=action,
             requested_deployment=option.deployment,
-            response_model=getattr(completion, "model", None),
+            response_model=response_model,
             usage=usage_from_completion(getattr(completion, "usage", None)),
             duration_ms=int((self._clock() - started) * 1000),
         )
@@ -195,8 +222,29 @@ class FakeIntentRouter:
     def route(self, prompt: str, option: ModelOption) -> RoutingResult:
         recorded = self._fixtures.get(prompt.strip().lower())
         intent = BankIntent(**recorded) if recorded is not None else self._rule_intent(prompt)
+        with tracing.chat_span(
+            deployment=option.deployment,
+            temperature=0.0,
+            max_tokens=0,
+            server_address=None,
+            fake=True,
+        ) as span:
+            action = action_from_intent(intent)
+            tracing.record_chat_result(
+                span,
+                deployment=option.deployment,
+                response_model=f"fake:{option.model}",
+                response_id=None,
+                finish_reason="stop",
+                input_tokens=0,
+                cached_input_tokens=0,
+                output_tokens=0,
+                reasoning_tokens=0,
+                tool_name=action["tool_name"] if action else None,
+                fake=True,
+            )
         return RoutingResult(
-            action=action_from_intent(intent),
+            action=action,
             requested_deployment=option.deployment,
             response_model=f"fake:{option.model}",
             usage=Usage(),

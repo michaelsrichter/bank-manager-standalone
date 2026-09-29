@@ -38,8 +38,22 @@ export interface CompareBody {
 
 type Fetch = typeof fetch;
 
+function randomHex(bytes: number): string {
+  const values = crypto.getRandomValues(new Uint8Array(bytes));
+  return Array.from(values, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+/** W3C trace context so every server trace starts from the browser request. */
+export function newTraceparent(): string {
+  return `00-${randomHex(16)}-${randomHex(8)}-01`;
+}
+
 function headers(sessionId: string): HeadersInit {
-  return { "Content-Type": "application/json", "X-Demo-Session": sessionId };
+  return {
+    "Content-Type": "application/json",
+    "X-Demo-Session": sessionId,
+    traceparent: newTraceparent(),
+  };
 }
 
 async function failure(response: Response): Promise<Error> {
@@ -94,6 +108,22 @@ export function sendPageView(page: string, fetcher: Fetch = fetch): void {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ page }),
+  }).catch(() => undefined);
+}
+
+export interface ClientTiming {
+  firstEventMs: number;
+  totalMs: number;
+  eventCount: number;
+  outcome: "done" | "error" | "stalled" | "rate_limited";
+  modelKey: string;
+}
+
+export function sendClientTiming(timing: ClientTiming, fetcher: Fetch = fetch): void {
+  void fetcher("/api/telemetry/client-timing", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", traceparent: newTraceparent() },
+    body: JSON.stringify(timing),
   }).catch(() => undefined);
 }
 

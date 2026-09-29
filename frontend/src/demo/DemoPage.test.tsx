@@ -212,6 +212,28 @@ describe("DemoPage", () => {
     expect(screen.getByText("Earlier chats (0)")).toBeInTheDocument();
   });
 
+  it("reports client timing only after analytics consent", async () => {
+    const user = userEvent.setup();
+    const reportTiming = vi.fn();
+    const { unmount } = render(
+      <DemoPage api={makeApi() as never} newId={newId} reportTiming={reportTiming} />,
+    );
+    await user.click(await screen.findByRole("button", { name: /Prepare transfer \$12,000/ }));
+    await screen.findByText("Prepared transfer of $12,000.00");
+    expect(reportTiming).not.toHaveBeenCalled();
+    unmount();
+
+    localStorage.setItem("bm.consent.v1", "analytics");
+    render(<DemoPage api={makeApi() as never} newId={newId} reportTiming={reportTiming} />);
+    await user.click(await screen.findByRole("button", { name: /Prepare transfer \$12,000/ }));
+    await waitFor(() => expect(reportTiming).toHaveBeenCalledTimes(1));
+    expect(reportTiming.mock.calls[0][0]).toMatchObject({
+      outcome: "done",
+      eventCount: events.length,
+      modelKey: "gpt-4.1",
+    });
+  });
+
   it("resets the anonymous profile", async () => {
     const user = userEvent.setup();
     render(<DemoPage api={makeApi() as never} newId={newId} />);

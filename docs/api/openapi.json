@@ -135,6 +135,27 @@
           }
         }
       }
+    },
+    "/api/telemetry/client-timing": {
+      "post": {
+        "summary": "Client Timing",
+        "operationId": "client_timing_api_telemetry_client_timing_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientTimingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -274,6 +295,54 @@
           "page"
         ],
         "title": "PageViewRequest",
+        "type": "object"
+      },
+      "ClientTimingRequest": {
+        "additionalProperties": false,
+        "description": "Browser-measured latency for one streamed comparison (analytics opt-in only).",
+        "properties": {
+          "firstEventMs": {
+            "maximum": 600000,
+            "minimum": 0,
+            "title": "Firsteventms",
+            "type": "integer"
+          },
+          "totalMs": {
+            "maximum": 600000,
+            "minimum": 0,
+            "title": "Totalms",
+            "type": "integer"
+          },
+          "eventCount": {
+            "maximum": 1000,
+            "minimum": 0,
+            "title": "Eventcount",
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "done",
+              "error",
+              "stalled",
+              "rate_limited"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "modelKey": {
+            "maxLength": 64,
+            "title": "Modelkey",
+            "type": "string"
+          }
+        },
+        "required": [
+          "firstEventMs",
+          "totalMs",
+          "eventCount",
+          "outcome",
+          "modelKey"
+        ],
+        "title": "ClientTimingRequest",
         "type": "object"
       }
     }

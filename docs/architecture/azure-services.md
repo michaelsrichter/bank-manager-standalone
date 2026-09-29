@@ -15,6 +15,9 @@ group and tagged `demo=true`, `owner`, `partner=none`, `cost-center=eps-ai-demos
 | Log Analytics workspace | Stores logs for 30 days, 1 GB/day cap | Diagnostic settings from Container Apps | [Docs](https://learn.microsoft.com/azure/azure-monitor/logs/log-analytics-overview) |
 | Budget (`Microsoft.Consumption/budgets`) | USD 50/month cost guardrail | Emails at 80% actual and 100% forecast | [Docs](https://learn.microsoft.com/azure/cost-management-billing/costs/tutorial-acm-create-budgets) |
 | Metric alert + action group | Sustained 5xx alert (> 5 in 15 minutes) | Separate from budget alerts | [Docs](https://learn.microsoft.com/azure/azure-monitor/alerts/alerts-metric-overview) |
+| Azure Workbook + portal dashboard | Detailed telemetry views over Log Analytics ([observability](../telemetry/observability.md)) | Read access follows Azure RBAC | [Workbooks](https://learn.microsoft.com/azure/azure-monitor/visualize/workbooks-overview) · [Dashboards](https://learn.microsoft.com/azure/azure-portal/azure-portal-dashboards) |
+| Diagnostic settings (Foundry, Container Apps, ACR) | Platform logs and metrics into the same workspace | HTTP logs with client IPs excluded | [Docs](https://learn.microsoft.com/azure/azure-monitor/essentials/diagnostic-settings) |
+| Foundry project `bank-manager` + App Insights connection | Enables the Foundry portal Tracing view for the agent’s GenAI spans | Project inherits account network rules | [Docs](https://learn.microsoft.com/azure/ai-foundry/how-to/develop/trace-application) |
 
 Not used, and why:
 

@@ -34,6 +34,7 @@ need rules enforced by software, not just good prompts.
 | [operations/rollback.md](operations/rollback.md) | Undo a bad release |
 | [operations/troubleshooting.md](operations/troubleshooting.md) | Common problems and fixes |
 | [operations/local-dev.md](operations/local-dev.md) | Run locally, with or without a real model |
+| [telemetry/observability.md](telemetry/observability.md) | OpenTelemetry pipeline, Azure workbook, and dashboard |
 | [telemetry/events.md](telemetry/events.md) | Every telemetry event the app sends |
 | [health/README.md](health/README.md) | Health page, probe states, caching |
 | [code-tour.md](code-tour.md) | Important request paths with source excerpts |
@@ -64,6 +65,7 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | CI coverage gates (BE ≥ 70% / FE ≥ 60%) | ✅ | `.github/workflows/ci.yml`, `FAKE_AI=1` |
 | Budget alerts in Bicep | ✅ | USD 50/month, 80% actual + 100% forecast |
 | Actionable service alerts | ✅ | Sustained 5xx only (> 5 in 15 min) |
+| OpenTelemetry end to end + dashboards | ✅ | Browser traceparent → FastAPI → GenAI agent spans → ACS metrics → Foundry diagnostics; Azure Workbook + portal dashboard — [observability](telemetry/observability.md) |
 | Health page + endpoint | ✅ | Expected-denial and no-inference probes — [health](health/README.md) |
 | VS Code Run All / Debug All, devcontainer | ✅ | `.vscode/`, `.devcontainer/` |
 | Uniform CLI `dev` / `test` / `lint` / `deploy` | ✅ | [`Makefile`](../Makefile) |

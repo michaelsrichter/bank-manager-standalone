@@ -4,5 +4,7 @@ azure-identity>=1.25.1,<2.0.0
 azure-monitor-opentelemetry>=1.8.0,<2.0.0
 fastapi>=0.118.0,<1.0.0
 openai>=1.107.0,<3.0.0
+opentelemetry-api>=1.30.0,<2.0.0
+opentelemetry-instrumentation-httpx>=0.51b0
 pydantic>=2.8.2,<3.0.0
 uvicorn[standard]>=0.37.0,<1.0.0

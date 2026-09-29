@@ -83,6 +83,18 @@ class PageViewRequest(BaseModel):
     page: str = Field(max_length=32)
 
 
+class ClientTimingRequest(BaseModel):
+    """Browser-measured latency for one streamed comparison (analytics opt-in only)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    firstEventMs: int = Field(ge=0, le=600_000)
+    totalMs: int = Field(ge=0, le=600_000)
+    eventCount: int = Field(ge=0, le=1000)
+    outcome: Literal["done", "error", "stalled", "rate_limited"]
+    modelKey: str = Field(max_length=64)
+
+
 @dataclass
 class AppDependencies:
     settings: Settings
@@ -354,6 +366,27 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
         assert isinstance(body, PageViewRequest)
         if body.page in PAGES:
             deps.sink.emit("page_view", page=body.page)
+        return Response(status_code=204)
+
+    @app.post(
+        "/api/telemetry/client-timing",
+        status_code=204,
+        openapi_extra=request_body(ClientTimingRequest),
+    )
+    async def client_timing(request: Request) -> Response:
+        body = await parse(request, ClientTimingRequest)
+        if isinstance(body, JSONResponse):
+            return body
+        assert isinstance(body, ClientTimingRequest)
+        if body.modelKey in {option.key for option in deps.intent_config.options}:
+            deps.sink.emit(
+                "client_timing",
+                first_event_ms=body.firstEventMs,
+                total_ms=body.totalMs,
+                outcome=body.outcome,
+                model_key=body.modelKey,
+                event_count=body.eventCount,
+            )
         return Response(status_code=204)
 
     static_dir = settings.static_dir.resolve()

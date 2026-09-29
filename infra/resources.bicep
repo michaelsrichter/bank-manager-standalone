@@ -119,6 +119,8 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   identity: { type: 'SystemAssigned' }
   properties: {
     customSubDomainName: foundryName
+    // Foundry projects enable the Foundry portal tracing view (connected to App Insights below).
+    allowProjectManagement: true
     // No API keys: Microsoft Entra ID only.
     disableLocalAuth: true
     publicNetworkAccess: empty(allowedIpRules) ? 'Disabled' : 'Enabled'
@@ -291,7 +293,13 @@ resource containerEnvDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-
   scope: containerEnv
   properties: {
     workspaceId: logAnalytics.id
-    logs: [{ categoryGroup: 'allLogs', enabled: true }]
+    // ContainerAppHTTPLogs is deliberately NOT exported: it records client IPs and
+    // user agents (eps-demo-compliance: no PII). App Insights masks client IPs.
+    logs: [
+      { category: 'ContainerAppConsoleLogs', enabled: true }
+      { category: 'ContainerAppSystemLogs', enabled: true }
+    ]
+    metrics: [{ category: 'AllMetrics', enabled: true }]
   }
 }
 
@@ -335,6 +343,12 @@ resource web 'Microsoft.App/containerApps@2025-01-01' = {
             { name: 'AZURE_AI_ENDPOINT', value: 'https://${foundryName}.openai.azure.com/' }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
             { name: 'OTEL_SERVICE_NAME', value: 'bank-manager-web' }
+            {
+              name: 'OTEL_RESOURCE_ATTRIBUTES'
+              value: 'service.namespace=bank-manager-demo,deployment.environment=${tags['azd-env-name']},gen_ai.agent.name=bank-manager'
+            }
+            // Never export prompt/response content in GenAI telemetry.
+            { name: 'OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT', value: 'false' }
           ]
           probes: [
             {
@@ -430,6 +444,21 @@ resource serverErrorsAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   }
 }
 
+module observability 'modules/observability.bicep' = {
+  name: 'observability'
+  params: {
+    location: location
+    tags: tags
+    logAnalyticsName: logAnalytics.name
+    appInsightsName: appInsights.name
+    foundryAccountName: foundry.name
+    registryName: registry.name
+    containerAppName: web.name
+    environmentName: tags['azd-env-name']
+  }
+  dependsOn: [deployments, foundryDnsGroup]
+}
+
 output containerRegistryLoginServer string = registry.properties.loginServer
 output containerAppName string = web.name
 output foundryEndpoint string = 'https://${foundryName}.openai.azure.com/'
@@ -437,3 +466,5 @@ output foundryAccountName string = foundry.name
 output webUrl string = 'https://${web.properties.configuration.ingress.fqdn}'
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
 output logAnalyticsWorkspaceId string = logAnalytics.id
+output workbookUrl string = observability.outputs.workbookUrl
+output dashboardUrl string = observability.outputs.dashboardUrl

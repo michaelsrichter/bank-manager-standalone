@@ -2,7 +2,14 @@ import { useEffect, useReducer, useState, type FormEvent } from "react";
 import { Skeleton } from "../components/Skeleton";
 import { t } from "../i18n";
 import * as defaultApi from "../lib/api";
-import { RateLimitedError, StreamStalledError } from "../lib/api";
+import {
+  RateLimitedError,
+  StreamStalledError,
+  sendClientTiming,
+  type ClientTiming,
+} from "../lib/api";
+import { loadConsent } from "../lib/preferences";
+import { StreamTimer } from "../lib/timing";
 import { loadProfile, resetProfile, type Profile } from "../lib/profile";
 import type { AppConfig, PolicyState } from "../lib/types";
 import {
@@ -23,6 +30,7 @@ interface Props {
   storage?: Storage;
   newId?: () => string;
   now?: () => string;
+  reportTiming?: (timing: ClientTiming) => void;
 }
 
 const SETTINGS_KEY = "bm.settings.v1";
@@ -51,6 +59,7 @@ export function DemoPage({
   storage = localStorage,
   newId = () => crypto.randomUUID(),
   now = () => new Date().toISOString(),
+  reportTiming = sendClientTiming,
 }: Props) {
   const s = t().demo;
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -126,6 +135,7 @@ export function DemoPage({
     dispatch({ type: "turn.start", turn });
     setPrompt("");
     setBusy(true);
+    const timer = new StreamTimer();
     try {
       await api.streamCompare(
         {
@@ -135,9 +145,18 @@ export function DemoPage({
           policyState: turn.policyState,
         },
         profile.id,
-        (event) => dispatch({ type: "turn.event", turnId: turn.id, event }),
+        (event) => {
+          timer.event(event.type);
+          dispatch({ type: "turn.event", turnId: turn.id, event });
+        },
       );
     } catch (error) {
+      timer.outcome =
+        error instanceof RateLimitedError
+          ? "rate_limited"
+          : error instanceof StreamStalledError
+            ? "stalled"
+            : "error";
       if (error instanceof RateLimitedError) {
         dispatch({
           type: "turn.fail",
@@ -157,6 +176,9 @@ export function DemoPage({
       }
     } finally {
       setBusy(false);
+      if (loadConsent(storage) === "analytics") {
+        reportTiming(timer.finish(turn.modelKey));
+      }
     }
   }
 

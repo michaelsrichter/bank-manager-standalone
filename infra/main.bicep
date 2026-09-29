@@ -75,3 +75,5 @@ output AZURE_AI_ACCOUNT_NAME string = resources.outputs.foundryAccountName
 output SERVICE_WEB_URL string = resources.outputs.webUrl
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = resources.outputs.appInsightsConnectionString
 output LOG_ANALYTICS_WORKSPACE_ID string = resources.outputs.logAnalyticsWorkspaceId
+output AZURE_TELEMETRY_WORKBOOK_URL string = resources.outputs.workbookUrl
+output AZURE_TELEMETRY_DASHBOARD_URL string = resources.outputs.dashboardUrl

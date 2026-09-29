@@ -7,6 +7,22 @@ import pytest
 
 os.environ.setdefault("FAKE_AI", "1")
 
+from opentelemetry import metrics, trace  # noqa: E402
+from opentelemetry.sdk.metrics import MeterProvider  # noqa: E402
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader  # noqa: E402
+from opentelemetry.sdk.trace import TracerProvider  # noqa: E402
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor  # noqa: E402
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (  # noqa: E402
+    InMemorySpanExporter,
+)
+
+SPAN_EXPORTER = InMemorySpanExporter()
+METRIC_READER = InMemoryMetricReader()
+_provider = TracerProvider()
+_provider.add_span_processor(SimpleSpanProcessor(SPAN_EXPORTER))
+trace.set_tracer_provider(_provider)
+metrics.set_meter_provider(MeterProvider(metric_readers=[METRIC_READER]))
+
 from bank_manager.bank.governance import build_control, manager_snapshot  # noqa: E402
 from bank_manager.config import REPO_ROOT, load_intent_config  # noqa: E402
 

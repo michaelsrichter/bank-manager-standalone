@@ -32,6 +32,9 @@ EVENTS: dict[str, frozenset[str]] = {
     ),
     "approval_decision": frozenset({"decision", "status", "reason", "tool"}),
     "rate_limited": frozenset({"scope", "route"}),
+    "client_timing": frozenset(
+        {"first_event_ms", "total_ms", "outcome", "model_key", "event_count"}
+    ),
 }
 
 LOGGER_NAME = "bank_manager.events"
@@ -77,15 +80,25 @@ class MemoryEventSink:
 
 
 def configure_telemetry(connection_configured: bool, azure_client_id: str | None) -> None:
-    """Send logs/traces to Application Insights with Entra (managed identity) auth."""
+    """Export traces, metrics, and logs to Azure Monitor with Entra (managed identity) auth.
+
+    Instrumented automatically: FastAPI requests, httpx (the OpenAI SDK's HTTP
+    calls to Azure AI Foundry), Azure SDK calls, and Python logging. The agent
+    harness adds GenAI spans and metrics in ``bank_manager.tracing``; ACS adds
+    ``acs_intervention_*`` metrics. Message content is never captured.
+    """
     logging.getLogger(LOGGER_NAME).setLevel(logging.INFO)
     if not connection_configured:
         return
     from azure.identity import DefaultAzureCredential
     from azure.monitor.opentelemetry import configure_azure_monitor
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
     configure_azure_monitor(
         credential=DefaultAzureCredential(managed_identity_client_id=azure_client_id),
         logger_name="bank_manager",
-        enable_live_metrics=False,
+        enable_live_metrics=True,
     )
+    instrumentor = HTTPXClientInstrumentor()
+    if not instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.instrument()

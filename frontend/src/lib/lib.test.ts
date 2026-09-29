@@ -6,6 +6,7 @@ import {
   getConfig,
   getHealth,
   resolveApproval,
+  sendClientTiming,
   sendPageView,
   streamCompare,
 } from "./api";
@@ -46,6 +47,7 @@ describe("streamCompare", () => {
     expect(events.map((event) => event.seq)).toEqual([1, 2, 3]);
     const [, init] = fetcher.mock.calls[0];
     expect(init.headers["X-Demo-Session"]).toBe("session");
+    expect(init.headers.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
   });
 
   it("raises a rate-limit error with the server's retry hint", async () => {
@@ -107,6 +109,12 @@ describe("api helpers", () => {
     expect(response.result.status).toBe("allow");
     sendPageView("demo", fetcher);
     expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({ page: "demo" });
+    fetcher.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    sendClientTiming(
+      { firstEventMs: 1, totalMs: 2, eventCount: 3, outcome: "done", modelKey: "gpt-4.1" },
+      fetcher,
+    );
+    expect(fetcher.mock.calls[2][0]).toBe("/api/telemetry/client-timing");
   });
 
   it("maps 429 on approval to RateLimitedError", async () => {

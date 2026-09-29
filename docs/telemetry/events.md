@@ -20,10 +20,12 @@ any other key is dropped (`test_safe_properties_drops_unknown_and_complex_values
 | `policy_decision` | Each lane result (2 per request) | `lane`, `status`, `reason`, `tool`, `intervention_point`, `tool_executed` | Yes |
 | `approval_decision` | Approve / Reject clicked | `decision`, `status`, `reason`, `tool` | Yes |
 | `rate_limited` | A 429 is returned | `scope` (ip/session), `route` | Yes |
+| `client_timing` | A streamed comparison finishes, **only after analytics opt-in** | `first_event_ms`, `total_ms`, `event_count`, `outcome`, `model_key` | Yes |
 
-Also collected automatically by the Azure Monitor OpenTelemetry distro: HTTP
-request spans (method, route, status, duration) and dependency spans. Request
-bodies are not captured. The W3C trace ID is shown in the UI evidence panel so a
+Also collected via OpenTelemetry (details in [observability.md](observability.md)): HTTP
+request spans, GenAI agent spans (`invoke_agent`, `chat`, `acs.evaluate`, `execute_tool`),
+httpx dependency spans to Foundry, GenAI and ACS metrics, Python logs, and exceptions.
+Request bodies are not captured. The W3C trace ID is shown in the UI evidence panel so a
 run can be found in Application Insights.
 
 ## Never recorded

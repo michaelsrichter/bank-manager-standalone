@@ -13,6 +13,7 @@ not saved on the server. Everything about “customers” in this demo is made u
 | Theme, cookie choice, settings | Browser `localStorage` | Until cleared | No |
 | Up to 10 chats × 20 turns | Browser `localStorage` | Until “Reset demo” / “Clear current chat” | No |
 | Operational telemetry (see [events](../telemetry/events.md)) | Application Insights | 30 days | No |
+| Container console/system logs (no request bodies) | Log Analytics | 30 days | No — the HTTP log category with client IPs is not exported |
 | Prompts, tool results, account data | **Not stored** on the server | — | — |
 
 - **No PII is collected.** No name, email, phone, or address fields exist.

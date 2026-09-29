@@ -13,8 +13,10 @@ from agent_control_specification import (
     ApprovalResolution,
     EnforcementMode,
     InterventionPoint,
+    OtelMetricsTelemetrySink,
 )
 
+from ..tracing import SpanEventTelemetrySink
 from .data import PERSONAS
 from .tools import execute_tool
 
@@ -46,7 +48,12 @@ class HostAnnotators:
 
 
 def build_control(manifest: Path = MANIFEST) -> AgentControl:
-    return AgentControl.from_path(str(manifest), annotator_dispatcher=HostAnnotators())
+    return AgentControl.from_path(
+        str(manifest),
+        annotator_dispatcher=HostAnnotators(),
+        # acs_intervention_* OTel metrics + decision events on the active span.
+        telemetry_sink=[OtelMetricsTelemetrySink(), SpanEventTelemetrySink()],
+    )
 
 
 def manager_snapshot(

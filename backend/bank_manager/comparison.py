@@ -13,7 +13,10 @@ from collections.abc import AsyncIterator, Mapping
 from typing import Any
 
 from agent_control_specification import AgentControl
+from opentelemetry import trace
+from opentelemetry.trace import Span, Status, StatusCode
 
+from . import tracing
 from .ai.cost import estimate_cost
 from .ai.router import (
     ContentFilteredError,
@@ -75,7 +78,10 @@ def run_baseline(action: Mapping[str, Any] | None) -> dict[str, Any]:
             tool_executed=False,
             intervention_point=None,
         )
-    value = execute_tool(str(action["tool_name"]), action["args"])
+    with tracing.tool_span(str(action["tool_name"]), "baseline") as span:
+        value = execute_tool(str(action["tool_name"]), action["args"])
+        span.set_attribute("bank_manager.status", "allow")
+        span.set_attribute("bank_manager.tool_executed", True)
     return project_result(
         "baseline",
         outcome(
@@ -98,7 +104,9 @@ async def run_governed(
 ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
     """Yield ('step', step) progress and one final ('result', result)."""
     yield "step", {"id": "governed.input", "state": "started"}
-    input_outcome = await evaluate_input(control, prompt, snapshot)
+    with tracing.policy_span("input") as span:
+        input_outcome = await evaluate_input(control, prompt, snapshot)
+        tracing.record_outcome(span, input_outcome)
     yield "step", {"id": "governed.input", "state": "completed", "status": input_outcome["status"]}
     if input_outcome["status"] == "deny":
         yield (
@@ -126,7 +134,9 @@ async def run_governed(
         return
 
     yield "step", {"id": "governed.pre_tool", "state": "started"}
-    pre_outcome = await evaluate_action(control, action, snapshot)
+    with tracing.policy_span("pre_tool_call") as span:
+        pre_outcome = await evaluate_action(control, action, snapshot)
+        tracing.record_outcome(span, pre_outcome)
     yield "step", {"id": "governed.pre_tool", "state": "completed", "status": pre_outcome["status"]}
     if pre_outcome["status"] in {"deny", "approval"}:
         yield (
@@ -142,7 +152,9 @@ async def run_governed(
         return
 
     yield "step", {"id": "governed.tool", "state": "started"}
-    run_outcome = await run_action(control, action, snapshot)
+    with tracing.tool_span(str(action["tool_name"]), "governed") as span:
+        run_outcome = await run_action(control, action, snapshot)
+        tracing.record_outcome(span, run_outcome)
     yield "step", {"id": "governed.tool", "state": "completed", "status": run_outcome["status"]}
     yield (
         "result",
@@ -171,7 +183,9 @@ async def resolve_approval(
             tool_executed=False,
             intervention_point="pre_tool_call",
         )
-    result = await run_action(control, action, snapshot, approved=True)
+    with tracing.tool_span(str(action["tool_name"]), "governed", approved=True) as span:
+        result = await run_action(control, action, snapshot, approved=True)
+        tracing.record_outcome(span, result)
     return project_result(
         "governed",
         result,
@@ -189,6 +203,62 @@ ERROR_MESSAGES = {
 
 
 async def stream_comparison(
+    *,
+    prompt: str,
+    snapshot: Mapping[str, Any],
+    option: ModelOption,
+    router: IntentRouter,
+    control: AgentControl,
+    sink: EventSink,
+    trace_id: str,
+) -> AsyncIterator[dict[str, Any]]:
+    """Wrap one comparison in an ``invoke_agent`` span.
+
+    The span is activated only around each step (never across a ``yield``) so
+    the OpenTelemetry context stays correct while the response streams.
+    """
+    span = tracing.start_agent_span(option.key, option.deployment)
+    inner = _stream_comparison(
+        prompt=prompt,
+        snapshot=snapshot,
+        option=option,
+        router=router,
+        control=control,
+        sink=sink,
+        trace_id=trace_id,
+    )
+    try:
+        while True:
+            with trace.use_span(span, end_on_exit=False):
+                try:
+                    event = await inner.__anext__()
+                except StopAsyncIteration:
+                    break
+            _annotate_agent_span(span, event)
+            yield event
+    except Exception as error:
+        span.record_exception(error)
+        span.set_status(Status(StatusCode.ERROR, type(error).__name__))
+        raise
+    finally:
+        await inner.aclose()
+        span.end()
+
+
+def _annotate_agent_span(span: Span, event: Mapping[str, Any]) -> None:
+    if event["type"] == "tool.selected":
+        action = event.get("action") or {}
+        span.set_attribute("bank_manager.selected_tool", action.get("tool_name", "unsupported"))
+    elif event["type"] == "lane.result":
+        result = event["result"]
+        span.set_attribute(f"bank_manager.{result['lane']}.status", result["status"])
+        span.set_attribute(f"bank_manager.{result['lane']}.reason", result["reason"])
+    elif event["type"] == "error":
+        span.set_attribute("error.type", event["code"])
+        span.set_status(Status(StatusCode.ERROR, event["code"]))
+
+
+async def _stream_comparison(
     *,
     prompt: str,
     snapshot: Mapping[str, Any],
@@ -225,6 +295,7 @@ async def stream_comparison(
         return
 
     cost = estimate_cost(routing.usage, option.pricing, fake=routing.fake)
+    tracing.record_cost(routing.requested_deployment, cost.get("totalUsd"))
     usage = routing.usage.public() if routing.usage else None
     sink.emit(
         "ai_call",
@@ -269,6 +340,7 @@ async def stream_comparison(
 
 
 def _emit_decision(sink: EventSink, result: Mapping[str, Any]) -> None:
+    tracing.record_lane(result)
     action = result.get("action") or {}
     sink.emit(
         "policy_decision",
