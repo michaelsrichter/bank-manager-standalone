@@ -23,6 +23,10 @@ class IntentRouter(Protocol):
     def route(self, prompt: str) -> dict[str, Any] | None: ...
 
 
+def action_tool_name(action: Mapping[str, Any] | None) -> str:
+    return str(action["tool_name"]) if action is not None else "unsupported"
+
+
 async def route_request(
     router: IntentRouter,
     prompt: str,

@@ -8,6 +8,7 @@ import streamlit as st
 from bank_chat import HELP_TEXT, MANAGERS, build_control, manager_snapshot
 from bank_runtime import (
     ExecutionMode,
+    action_tool_name,
     approve_selected_action,
     reject_selected_action,
     route_request,
@@ -115,7 +116,7 @@ async def process_prompt(prompt: str) -> None:
     )
     LOGGER.info(
         "Comparison completed: tool=%s baseline=%s governed=%s",
-        action["tool_name"],
+        action_tool_name(action),
         baseline["status"],
         governed["status"],
     )
