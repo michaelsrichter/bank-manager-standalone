@@ -115,32 +115,57 @@ resource workbook 'Microsoft.Insights/workbooks@2023-06-01' = {
 var workbookBlade = '${environment().portal}/#@${tenant().tenantId}/resource${workbook.id}/workbook'
 var foundryPortal = 'https://ai.azure.com/resource/overview?wsid=${project.id}'
 
-func logTile(x int, y int, w int, h int, title string, kql string, control string, chart string, workspaceId string) object => {
+func logInputs(title string, kql string, control string, chart string, workspaceId string) array => [
+  { name: 'resourceTypeMode', isOptional: true }
+  { name: 'ComponentId', isOptional: true }
+  { name: 'Scope', value: { resourceIds: [workspaceId] }, isOptional: true }
+  { name: 'PartId', value: guid(title), isOptional: true }
+  { name: 'Version', value: '2.0', isOptional: true }
+  { name: 'TimeRange', value: 'P1D', isOptional: true }
+  { name: 'DashboardId', isOptional: true }
+  { name: 'DraftRequestParameters', isOptional: true }
+  { name: 'Query', value: kql, isOptional: true }
+  { name: 'ControlType', value: control, isOptional: true }
+  { name: 'SpecificChart', value: chart, isOptional: true }
+  { name: 'PartTitle', value: title, isOptional: true }
+  { name: 'PartSubTitle', value: 'Log Analytics', isOptional: true }
+  { name: 'IsQueryContainTimeRange', value: false, isOptional: true }
+]
+
+func gridTile(x int, y int, w int, h int, title string, kql string, workspaceId string) object => {
   position: { x: x, y: y, colSpan: w, rowSpan: h }
   metadata: {
     type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-    inputs: [
-      { name: 'resourceTypeMode', isOptional: true }
-      { name: 'ComponentId', isOptional: true }
-      { name: 'Scope', value: { resourceIds: [workspaceId] }, isOptional: true }
-      { name: 'PartId', value: guid(title), isOptional: true }
-      { name: 'Version', value: '2.0', isOptional: true }
-      { name: 'TimeRange', value: 'P1D', isOptional: true }
-      { name: 'DashboardId', isOptional: true }
-      { name: 'DraftRequestParameters', isOptional: true }
-      { name: 'Query', value: kql, isOptional: true }
-      { name: 'ControlType', value: control, isOptional: true }
-      { name: 'SpecificChart', value: chart, isOptional: true }
-      { name: 'PartTitle', value: title, isOptional: true }
-      { name: 'PartSubTitle', value: 'Log Analytics', isOptional: true }
-      { name: 'IsQueryContainTimeRange', value: false, isOptional: true }
-    ]
+    inputs: logInputs(title, kql, 'AnalyticsGrid', '', workspaceId)
     settings: {}
   }
 }
 
-func metricTile(x int, y int, title string, resourceId string, metrics array) object => {
-  position: { x: x, y: y, colSpan: 6, rowSpan: 4 }
+// Chart tiles need an explicit Dimensions input (x axis, y columns, split, aggregation);
+// without it the portal shows "Error retrieving data".
+func chartTile(x int, y int, w int, h int, title string, kql string, chart string, yColumn string, yType string, splitColumn string, aggregation string, workspaceId string) object => {
+  position: { x: x, y: y, colSpan: w, rowSpan: h }
+  metadata: {
+    type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+    inputs: concat(logInputs(title, kql, 'FrameControlChart', chart, workspaceId), [
+      {
+        name: 'Dimensions'
+        value: {
+          xAxis: { name: 'TimeGenerated', type: 'datetime' }
+          yAxis: [{ name: yColumn, type: yType }]
+          splitBy: empty(splitColumn) ? [] : [{ name: splitColumn, type: 'string' }]
+          aggregation: aggregation
+        }
+        isOptional: true
+      }
+      { name: 'LegendOptions', value: { isEnabled: true, position: 'Bottom' }, isOptional: true }
+    ])
+    settings: {}
+  }
+}
+
+func metricTile(x int, y int, w int, title string, resourceId string, metrics array, split string) object => {
+  position: { x: x, y: y, colSpan: w, rowSpan: 4 }
   metadata: {
     type: 'Extension/HubsExtension/PartType/MonitorChartPart'
     inputs: [
@@ -150,7 +175,7 @@ func metricTile(x int, y int, title string, resourceId string, metrics array) ob
     settings: {
       content: {
         options: {
-          chart: {
+          chart: union({
             title: title
             titleKind: 2
             metrics: map(metrics, m => {
@@ -160,7 +185,6 @@ func metricTile(x int, y int, title string, resourceId string, metrics array) ob
               namespace: 'microsoft.cognitiveservices/accounts'
               metricVisualization: { displayName: m.label }
             })
-            grouping: { dimension: 'ModelDeploymentName', sort: 2, top: 10 }
             visualization: {
               chartType: 2
               legendVisualization: { isVisible: true, position: 2, hideSubtitle: false }
@@ -169,7 +193,7 @@ func metricTile(x int, y int, title string, resourceId string, metrics array) ob
                 y: { isVisible: true, axisType: 1 }
               }
             }
-          }
+          }, empty(split) ? {} : { grouping: { dimension: split, sort: 2, top: 10 } })
         }
       }
     }
@@ -214,24 +238,25 @@ resource dashboard 'Microsoft.Portal/dashboards@2022-12-01-preview' = {
               }
             }
           }
-          logTile(6, 0, 6, 4, 'Comparisons and model calls', 'AppEvents | where Name in ("model_selection", "ai_call") | summarize Count = count() by bin(TimeGenerated, 15m), Name', 'FrameControlChart', 'Line', logAnalytics.id)
-          logTile(12, 0, 6, 4, 'Governed vs unsafe lane results', 'AppEvents | where Name == "policy_decision" | summarize Count = count() by Lane = tostring(Properties.lane), Status = tostring(Properties.status)', 'AnalyticsGrid', '', logAnalytics.id)
-          logTile(0, 4, 6, 4, 'Tokens by deployment', 'AppEvents | where Name == "ai_call" | summarize Input = sum(toint(Properties.input_tokens)), Output = sum(toint(Properties.output_tokens)) by Deployment = tostring(Properties.deployment)', 'AnalyticsGrid', '', logAnalytics.id)
-          logTile(6, 4, 6, 4, 'Model latency p95 (ms)', 'AppDependencies | where Name startswith "chat " | summarize P95 = percentile(DurationMs, 95) by bin(TimeGenerated, 15m), Deployment = tostring(Properties["gen_ai.request.model"])', 'FrameControlChart', 'Line', logAnalytics.id)
-          logTile(12, 4, 6, 4, 'Top governed rules', 'AppEvents | where Name == "policy_decision" and tostring(Properties.lane) == "governed" | summarize Count = count() by Rule = tostring(Properties.reason) | top 10 by Count', 'AnalyticsGrid', '', logAnalytics.id)
-          logTile(0, 8, 6, 4, 'Estimated model cost (USD)', 'AppEvents | where Name == "ai_call" | summarize CostUSD = sum(todouble(Properties.estimated_cost_usd)) by bin(TimeGenerated, 1h)', 'FrameControlChart', 'StackedColumn', logAnalytics.id)
-          logTile(6, 8, 6, 4, 'Requests by route and status', 'AppRequests | summarize Requests = count(), P95ms = percentile(DurationMs, 95) by Name, ResultCode | order by Requests desc', 'AnalyticsGrid', '', logAnalytics.id)
-          logTile(12, 8, 6, 4, 'Agent runs (GenAI spans)', 'AppDependencies | where Name == "invoke_agent bank-manager" | project TimeGenerated, TraceId = OperationId, DurationMs, Tool = tostring(Properties["bank_manager.selected_tool"]), Governed = tostring(Properties["bank_manager.governed.status"]), Rule = tostring(Properties["bank_manager.governed.reason"]) | top 20 by TimeGenerated desc', 'AnalyticsGrid', '', logAnalytics.id)
-          metricTile(0, 12, 'Foundry: model requests by deployment', foundry.id, [
+          chartTile(6, 0, 6, 4, 'Comparisons per 5 min, by governed outcome', 'AppEvents | where Name == "policy_decision" and tostring(Properties.lane) == "governed" | summarize Comparisons = count() by bin(TimeGenerated, 5m), Outcome = tostring(Properties.status)', 'StackedColumn', 'Comparisons', 'long', 'Outcome', 'Sum', logAnalytics.id)
+          chartTile(12, 0, 6, 4, 'Estimated model cost (USD, per 15 min)', 'AppEvents | where Name == "ai_call" and tostring(Properties.status) == "ok" | summarize CostUSD = sum(todouble(Properties.estimated_cost_usd)) by bin(TimeGenerated, 15m), Deployment = tostring(Properties.deployment)', 'StackedColumn', 'CostUSD', 'real', 'Deployment', 'Sum', logAnalytics.id)
+          gridTile(0, 4, 6, 4, 'Same tool call, two lanes: results', 'let d = AppEvents | where Name == "policy_decision" | extend Lane = tostring(Properties.lane), Ran = tostring(Properties.tool_executed) =~ "true"; d | summarize [\'No rules\'] = countif(Lane == "baseline"), Governed = countif(Lane == "governed") by Outcome = tostring(Properties.status) | order by Governed desc | union (d | summarize [\'No rules\'] = countif(Lane == "baseline" and Ran), Governed = countif(Lane == "governed" and Ran) | extend Outcome = "= tool actually ran") | project Outcome, [\'No rules\'], Governed', logAnalytics.id)
+          gridTile(6, 4, 6, 4, 'Governed lane: which rule decided', 'AppEvents | where Name == "policy_decision" and tostring(Properties.lane) == "governed" | extend Rule = iff(tostring(Properties.reason) == "default", "(allowed, no rule needed)", tostring(Properties.reason)) | summarize Count = count() by Rule, Outcome = tostring(Properties.status) | order by Count desc | take 12', logAnalytics.id)
+          gridTile(12, 4, 6, 4, 'Model calls and cost', 'AppEvents | where Name == "ai_call" and tostring(Properties.status) == "ok" | summarize Calls = count(), [\'Cost $\'] = round(sum(todouble(Properties.estimated_cost_usd)), 4) by Model = tostring(Properties.deployment)', logAnalytics.id)
+          chartTile(0, 8, 6, 4, 'App-measured model latency p95 (ms, per 5 min)', 'AppDependencies | where Name startswith "chat " | summarize P95ms = percentile(DurationMs, 95) by bin(TimeGenerated, 5m), Deployment = tostring(Properties["gen_ai.request.model"])', 'Line', 'P95ms', 'real', 'Deployment', 'Max', logAnalytics.id)
+          metricTile(6, 8, 6, 'Foundry: request latency (ms, server side)', foundry.id, [
+            { name: 'Latency', aggregation: 4, label: 'Avg latency' }
+            { name: 'Latency', aggregation: 3, label: 'Max latency' }
+          ], '')
+          metricTile(12, 8, 6, 'Foundry: model requests by deployment', foundry.id, [
             { name: 'ModelRequests', aggregation: 1, label: 'Model requests' }
-          ])
-          metricTile(6, 12, 'Foundry: input / output tokens', foundry.id, [
+          ], 'ModelDeploymentName')
+          metricTile(0, 12, 6, 'Foundry: input / output tokens', foundry.id, [
             { name: 'InputTokens', aggregation: 1, label: 'Input tokens' }
             { name: 'OutputTokens', aggregation: 1, label: 'Output tokens' }
-          ])
-          metricTile(12, 12, 'Foundry: time to response (ms)', foundry.id, [
-            { name: 'TimeToResponse', aggregation: 4, label: 'Time to response' }
-          ])
+          ], 'ModelDeploymentName')
+          gridTile(6, 12, 12, 4, 'Requests by route (health probes excluded)', 'AppRequests | where Name != "GET /api/health/live" | extend Route = iff(Name startswith "GET /" and not(Name startswith "GET /api"), "GET (pages and assets)", Name) | summarize Requests = count(), Failed = countif(Success == false), P95ms = round(percentile(DurationMs, 95), 0) by Route, Code = ResultCode | order by Requests desc', logAnalytics.id)
+          gridTile(0, 16, 18, 5, 'Latest agent runs (GenAI spans) — look up a Trace ID in Application Insights transaction search', 'AppDependencies | where Name == "invoke_agent bank-manager" | project TimeGenerated, Tool = tostring(Properties["bank_manager.selected_tool"]), Baseline = tostring(Properties["bank_manager.baseline.status"]), Governed = tostring(Properties["bank_manager.governed.status"]), Rule = tostring(Properties["bank_manager.governed.reason"]), Model = tostring(Properties["gen_ai.request.model"]), DurationMs = round(DurationMs, 0), TraceId = OperationId | extend Rule = iff(Rule == "default", "(allowed, no rule needed)", Rule) | top 50 by TimeGenerated desc', logAnalytics.id)
         ]
       }
     ]

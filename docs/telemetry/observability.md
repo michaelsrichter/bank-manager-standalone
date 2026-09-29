@@ -11,8 +11,8 @@ step took — without ever seeing what anyone typed.
 
 | View | What it shows | How to open |
 |---|---|---|
-| **Azure Workbook** “Governed AI Bank Assistant — telemetry” | 29 panels: KPIs; native Foundry platform metrics (requests, input/output tokens, time to response by deployment); model calls/tokens/latency/cost from GenAI spans; Foundry diagnostic logs; governance decisions and prevented tool calls, ACS runtime metrics, agent runs and span timing, requests, browser timing, exceptions, container events | `azd env get-value AZURE_TELEMETRY_WORKBOOK_URL`, or portal → resource group → Workbooks |
-| **Azure portal dashboard** “Governed AI Bank Assistant” | 12 tiles: links, comparisons, lane results, tokens, model p95, top rules, cost, requests, recent agent runs, and native Foundry metric charts (requests, tokens, time to response) | `azd env get-value AZURE_TELEMETRY_DASHBOARD_URL`, or portal → Dashboard hub |
+| **Azure Workbook** “Governed AI Bank Assistant — telemetry” | 27 panels: KPIs; native Foundry platform metrics (requests, input/output tokens, server latency, Azure OpenAI usage); model calls/tokens/latency/cost from GenAI spans; Foundry HTTP calls and diagnostic logs; governance decisions and prevented tool calls, ACS runtime metrics, agent runs and span timing, requests, browser timing, exceptions, container events | `azd env get-value AZURE_TELEMETRY_WORKBOOK_URL`, or portal → resource group → Workbooks |
+| **Azure portal dashboard** “Governed AI Bank Assistant” | 12 tiles: links; comparisons per 5 min by governed outcome; cost; the same tool call in both lanes (including how often the tool actually ran); which rule decided; model calls and cost; app-measured model p95; Foundry server latency, requests, and tokens; requests by route; latest agent runs | `azd env get-value AZURE_TELEMETRY_DASHBOARD_URL`, or portal → Dashboard hub |
 | **Application Insights** | Transaction search (full span tree per trace ID), Live Metrics, Application map, Failures, Performance | Link on the dashboard |
 | **Azure AI Foundry → project `bank-manager` → Tracing** | GenAI spans (`invoke_agent`, `chat`, `execute_tool`) via the project’s App Insights connection | Link on the dashboard (needs portal network access to Foundry; see below) |
 
@@ -70,3 +70,25 @@ single operation ID: `POST /api/compare` → `invoke_agent bank-manager` →
 `RequestResponse` and `AzureOpenAIRequestUsage` logs arrived in `AzureDiagnostics`.
 A search for prompt text, synthetic SSNs, and customer names across every table
 returned zero rows.
+## Reading the charts
+
+- **Health-probe 400s are expected.** Every minute at most, `/api/health` sends
+  Foundry an intentionally empty chat request. Foundry rejects it with HTTP 400
+  *before* running the model, which proves network, identity, and deployment
+  without spending tokens. These 400s appear in the Foundry HTTP and diagnostic
+  panels, labeled "Health probe". They are not failures.
+- **"(allowed, no rule needed)"** is the governed lane allowing a request
+  because no rule applied (ACS reports this reason as `default`).
+- **Portal caching.** The portal caches dashboards and workbook results. After a
+  redeploy, reopen the page or click **Refresh** to see the latest version.
+
+## Sample traffic
+
+Charts need traffic to be useful. [`tools/generate-traffic.py`](../../tools/generate-traffic.py)
+(`make traffic`) simulates anonymous visitors for about an hour. It sends page
+views, a mix of scenario and free-text requests across personas, models, and
+toggles, human approve/reject decisions, health checks, browser timing, and one
+short burst that trips the rate limiter. It calls the real models (about
+USD 0.15 per hour at the default pace) and stays under the rate limits apart
+from the deliberate burst. A 60-minute run was used on 2026-09-29 to populate
+the dashboards.

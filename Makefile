@@ -6,7 +6,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help install install-acs install-opa dev dev-backend dev-frontend test test-backend \
         test-frontend lint guidance-lint lint-backend lint-frontend bicep-lint policy-test \
-        format openapi deploy
+        format openapi deploy traffic
 
 AGT_COMMIT ?= c07577d9785d4f64225a7b367cb2a978e9fc784d
 OPA_VERSION ?= v1.21.0
@@ -79,6 +79,9 @@ format: ## Auto-format backend + frontend
 
 openapi: ## Regenerate docs/api/openapi.json from FastAPI
 	cd backend && FAKE_AI=1 ../$(PY) -c "import json; from bank_manager.main import create_app; print(json.dumps(create_app().openapi(), indent=2))" > ../docs/api/openapi.json
+
+traffic: ## Seed ~60 min of realistic demo traffic against the deployed app (real models, ~USD 0.15)
+	python3 tools/generate-traffic.py --url "$$(azd env get-value SERVICE_WEB_URL)" --minutes $${MINUTES:-60}
 
 deploy: bicep-lint ## Deploy via Azure Developer CLI (azd up)
 	@command -v azd >/dev/null 2>&1 || { echo "azd not found — see https://aka.ms/azd"; exit 1; }

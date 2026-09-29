@@ -11,10 +11,22 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parents[1] / "infra" / "workbooks" / "bank-manager-telemetry.workbook.json"
+OUT = (
+    Path(__file__).resolve().parents[1]
+    / "infra"
+    / "workbooks"
+    / "bank-manager-telemetry.workbook.json"
+)
 WORKSPACE = "microsoft.operationalinsights/workspaces"
 
-def foundry_metric(name: str, title: str, metrics: list[tuple[str, str, int]], width: str = "50") -> None:
+
+def foundry_metric(
+    name: str,
+    title: str,
+    metrics: list[tuple[str, str, int]],
+    width: str = "50",
+    split: str | None = "ModelDeploymentName",
+) -> None:
     """Native Azure Monitor metrics chart read straight from the Foundry account."""
     items.append(
         {
@@ -32,9 +44,10 @@ def foundry_metric(name: str, title: str, metrics: list[tuple[str, str, int]], w
                 "metrics": [
                     {
                         "namespace": "microsoft.cognitiveservices/accounts",
-                        "metric": f"microsoft.cognitiveservices/accounts-{category}-{metric}",
+                        # Workbooks encode " - " inside a metric category as two spaces.
+                        "metric": f"microsoft.cognitiveservices/accounts-{category.replace(' - ', '  ')}-{metric}",
                         "aggregation": aggregation,
-                        "splitBy": "ModelDeploymentName",
+                        **({"splitBy": split} if split else {}),
                     }
                     for category, metric, aggregation in metrics
                 ],
@@ -145,6 +158,7 @@ union
 """,
     "tiles",
     extra={
+        "size": 4,
         "tileSettings": {
             "titleContent": {"columnMatch": "Metric"},
             "leftContent": {
@@ -154,7 +168,7 @@ union
                 "numberFormat": {"unit": 17, "options": {"maximumSignificantDigits": 4}},
             },
             "showBorder": True,
-        }
+        },
     },
 )
 
@@ -171,13 +185,20 @@ foundry_metric(
 )
 foundry_metric(
     "latency",
-    "Foundry: time to response by deployment (ms, platform metric)",
-    [("Models - Latency", "TimeToResponse", 4)],
+    "Foundry: request latency (ms, server side, platform metric)",
+    [
+        ("Cognitive Services - HTTP Requests", "Latency", 4),
+        ("Cognitive Services - HTTP Requests", "Latency", 3),
+    ],
+    split=None,
 )
 foundry_metric(
     "aoai-usage",
     "Foundry: processed prompt and generated tokens (Azure OpenAI usage metric)",
-    [("Azure OpenAI - Usage", "ProcessedPromptTokens", 1), ("Azure OpenAI - Usage", "GeneratedTokens", 1)],
+    [
+        ("Azure OpenAI - Usage", "ProcessedPromptTokens", 1),
+        ("Azure OpenAI - Usage", "GeneratedTokens", 1),
+    ],
 )
 query(
     "calls-by-model",
@@ -185,7 +206,7 @@ query(
     """
 AppDependencies
 | where Name startswith "chat "
-| summarize Calls = count() by bin(TimeGenerated, 15m), Deployment = tostring(Properties["gen_ai.request.model"])
+| summarize Calls = count() by bin(TimeGenerated, 5m), Deployment = tostring(Properties["gen_ai.request.model"])
 """,
     "timechart",
     "50",
@@ -198,7 +219,7 @@ AppEvents
 | where Name == "ai_call" and tostring(Properties.status) == "ok"
 | extend Deployment = tostring(Properties.deployment)
 | summarize Input = sum(toint(Properties.input_tokens)), CachedInput = sum(toint(Properties.cached_input_tokens)),
-            Output = sum(toint(Properties.output_tokens)), Reasoning = sum(toint(Properties.reasoning_tokens)) by bin(TimeGenerated, 15m), Deployment
+            Output = sum(toint(Properties.output_tokens)), Reasoning = sum(toint(Properties.reasoning_tokens)) by bin(TimeGenerated, 5m), Deployment
 """,
     "timechart",
     "50",
@@ -214,6 +235,7 @@ AppDependencies
 """,
     "table",
     "50",
+    {"size": 1},
 )
 query(
     "cost",
@@ -221,54 +243,33 @@ query(
     """
 AppEvents
 | where Name == "ai_call"
-| summarize CostUSD = sum(todouble(Properties.estimated_cost_usd)) by bin(TimeGenerated, 1h), Deployment = tostring(Properties.deployment)
+| summarize CostUSD = sum(todouble(Properties.estimated_cost_usd)) by bin(TimeGenerated, 15m), Deployment = tostring(Properties.deployment)
 """,
     "barchart",
     "50",
 )
 query(
     "foundry-http",
-    "HTTP calls to Foundry (httpx instrumentation, private endpoint)",
+    "HTTP calls to Foundry (httpx, private endpoint) — 400s are the health check's intentional no-inference probe",
     """
 AppDependencies
 | where Target endswith ".openai.azure.com" or Target endswith ".cognitiveservices.azure.com" or Target endswith ".services.ai.azure.com"
-| summarize Calls = count(), Failures = countif(Success == false), P95ms = percentile(DurationMs, 95) by Name, ResultCode
-| order by Calls desc
+| extend Purpose = iff(OperationName == "GET /api/health", "Health probe (expected 400, no tokens)", "Agent model call")
+| summarize Calls = count(), UnexpectedFailures = countif(Success == false and Purpose == "Agent model call"), P95ms = round(percentile(DurationMs, 95), 0)
+    by Purpose, Deployment = extract(@"deployments/([^/]+)/", 1, Name), ResultCode
+| order by Purpose asc, Calls desc
 """,
     "table",
     "50",
-)
-query(
-    "foundry-metrics",
-    "Foundry platform metrics: tokens and requests (Azure Monitor)",
-    """
-AzureMetrics
-| where ResourceProvider == "MICROSOFT.COGNITIVESERVICES"
-| where MetricName in ("ProcessedPromptTokens", "GeneratedTokens", "InputTokens", "OutputTokens", "ModelRequests", "AzureOpenAIRequests")
-| summarize Total = sum(Total) by bin(TimeGenerated, 15m), MetricName
-""",
-    "timechart",
-    "50",
-)
-query(
-    "foundry-latency",
-    "Foundry platform latency (ms, server side)",
-    """
-AzureMetrics
-| where ResourceProvider == "MICROSOFT.COGNITIVESERVICES"
-| where MetricName in ("TimeToResponse", "TimeToLastByte", "Latency")
-| summarize AvgMs = avg(Average), MaxMs = max(Maximum) by bin(TimeGenerated, 15m), MetricName
-""",
-    "timechart",
-    "50",
+    {"size": 1},
 )
 query(
     "foundry-logs",
-    "Foundry diagnostic logs (RequestResponse / usage / audit)",
+    "Foundry diagnostic logs (RequestResponse / usage / audit) — 400s are the health probe",
     """
 AzureDiagnostics
 | where ResourceProvider == "MICROSOFT.COGNITIVESERVICES"
-| summarize Requests = count(), AvgDurationMs = avg(DurationMs) by Category, OperationName, ResultSignature
+| summarize Requests = count(), AvgDurationMs = round(avg(DurationMs), 0) by Category, OperationName, ResultSignature
 | order by Requests desc
 """,
     "table",
@@ -285,7 +286,14 @@ AppEvents
 """,
     "barchart",
     "50",
-    {"chartSettings": {"xAxis": "Lane", "yAxis": ["Count"], "group": "Status", "createOtherGroup": 0}},
+    {
+        "chartSettings": {
+            "xAxis": "Lane",
+            "yAxis": ["Count"],
+            "group": "Status",
+            "createOtherGroup": 0,
+        }
+    },
 )
 query(
     "reasons",
@@ -293,7 +301,8 @@ query(
     """
 AppEvents
 | where Name == "policy_decision" and tostring(Properties.lane) == "governed"
-| summarize Count = count() by Rule = tostring(Properties.reason), Status = tostring(Properties.status), Tool = tostring(Properties.tool)
+| extend Rule = iff(tostring(Properties.reason) == "default", "(allowed, no rule needed)", tostring(Properties.reason))
+| summarize Count = count() by Rule, Status = tostring(Properties.status), Tool = tostring(Properties.tool)
 | order by Count desc
 """,
     "table",
@@ -308,6 +317,7 @@ AppEvents
 | extend Lane = tostring(Properties.lane), Tool = tostring(Properties.tool), Executed = tostring(Properties.tool_executed) =~ "true"
 | summarize BaselineRan = countif(Lane == "baseline" and Executed), GovernedRan = countif(Lane == "governed" and Executed) by Tool
 | extend PreventedByPolicy = BaselineRan - GovernedRan
+| where Tool != "unsupported"
 | order by PreventedByPolicy desc
 """,
     "table",
@@ -319,11 +329,14 @@ query(
     """
 AppMetrics
 | where Name startswith "acs_intervention"
-| summarize Value = sum(Sum), Samples = sum(ItemCount) by Name
+| summarize Total = sum(Sum), Samples = sum(ItemCount) by Name
+| extend Value = iff(Name endswith "_ms", round(Total / Samples, 1), Total), Meaning = iff(Name endswith "_ms", "average ms per policy evaluation", "decisions")
+| project Name, Value, Meaning, Samples
 | order by Name asc
 """,
     "table",
     "50",
+    {"size": 1},
 )
 query(
     "acs-latency",
@@ -347,6 +360,7 @@ AppEvents
 """,
     "table",
     "50",
+    {"size": 1},
 )
 
 text(
@@ -360,13 +374,16 @@ query(
     """
 AppDependencies
 | where Name == "invoke_agent bank-manager"
-| project TimeGenerated, TraceId = OperationId, DurationMs,
-          Model = tostring(Properties["gen_ai.request.model"]),
+| project TimeGenerated,
           Tool = tostring(Properties["bank_manager.selected_tool"]),
           Baseline = tostring(Properties["bank_manager.baseline.status"]),
           Governed = tostring(Properties["bank_manager.governed.status"]),
           Rule = tostring(Properties["bank_manager.governed.reason"]),
-          Error = tostring(Properties["error.type"])
+          Model = tostring(Properties["gen_ai.request.model"]),
+          DurationMs = round(DurationMs, 0),
+          Error = tostring(Properties["error.type"]),
+          TraceId = OperationId
+| extend Rule = iff(Rule == "default", "(allowed, no rule needed)", Rule)
 | top 50 by TimeGenerated desc
 """,
 )
@@ -377,11 +394,20 @@ query(
 AppDependencies
 | where Name startswith "invoke_agent" or Name startswith "chat " or Name startswith "acs.evaluate" or Name startswith "execute_tool"
 | extend SpanType = case(Name startswith "invoke_agent", "1 invoke_agent (total)", Name startswith "chat ", "2 chat (model)", Name startswith "acs.evaluate", "3 acs.evaluate (policy)", "4 execute_tool")
-| summarize AvgMs = avg(DurationMs), P95Ms = percentile(DurationMs, 95) by SpanType
+| summarize Spans = count(), AvgMs = round(avg(DurationMs), 0), P95Ms = round(percentile(DurationMs, 95), 0) by SpanType
 | order by SpanType asc
 """,
-    "barchart",
+    "table",
     "50",
+    {
+        "size": 1,
+        "gridSettings": {
+            "formatters": [
+                {"columnMatch": "AvgMs", "formatter": 4, "formatOptions": {"palette": "blue"}},
+                {"columnMatch": "P95Ms", "formatter": 4, "formatOptions": {"palette": "orange"}},
+            ]
+        },
+    },
 )
 query(
     "tools",
@@ -398,9 +424,11 @@ AppDependencies
 text("app", "## 4. Application and platform health")
 query(
     "requests",
-    "Requests by route",
+    "Requests by route (health probes excluded)",
     """
 AppRequests
+| where Name != "GET /api/health/live"
+| extend Name = iff(Name startswith "GET /" and not(Name startswith "GET /api"), "GET (pages and assets)", Name)
 | summarize Requests = count(), Failed = countif(Success == false), P50ms = percentile(DurationMs, 50), P95ms = percentile(DurationMs, 95) by Name, ResultCode
 | order by Requests desc
 """,
@@ -409,10 +437,11 @@ AppRequests
 )
 query(
     "requests-time",
-    "Requests over time by result code",
+    "Requests over time by result code (health probes excluded)",
     """
 AppRequests
-| summarize Requests = count() by bin(TimeGenerated, 15m), ResultCode
+| where Name != "GET /api/health/live"
+| summarize Requests = count() by bin(TimeGenerated, 5m), ResultCode
 """,
     "timechart",
     "50",
@@ -428,6 +457,7 @@ AppEvents
 """,
     "table",
     "50",
+    {"size": 1},
 )
 query(
     "pages",

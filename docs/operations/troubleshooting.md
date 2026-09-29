@@ -13,6 +13,9 @@
 | `azd deploy` build fails in ACR | Transient GitHub/rustup download failure | Re-run `azd deploy web`. |
 | Telemetry missing in App Insights | Local auth is disabled; identity lacks `Monitoring Metrics Publisher` | Check the role; allow ~5 min ingestion delay. |
 | 429 in the UI | Rate limit reached | Wait for the `Retry-After` seconds. |
+| Dashboard or workbook looks unchanged after a deploy | The Azure portal caches both | Reopen the page or click **Refresh**. |
+| Foundry panels show HTTP 400 calls | The health check's intentional no-inference probe | Expected. See [observability](../telemetry/observability.md#reading-the-charts). |
+| Dashboards are mostly empty | No traffic yet | `make traffic` (about USD 0.15 per hour). |
 | Colophon shows an older commit | Deployed before committing | Commit, push, then `azd deploy web`. |
 
 ## Getting access to the shared dev resources
