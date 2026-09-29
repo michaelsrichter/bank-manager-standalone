@@ -21,6 +21,14 @@
 - Dead end: the first provision failed because the private endpoint started
   before the Foundry account finished provisioning (`state Accepted`). Fixed with
   an explicit `dependsOn` on the model deployments.
+- Dead end: the Container Apps environment failed with
+  `SubscriptionNotRegisteredForFeature` (`AllowBringYourOwnPublicIpAddress`). Registering the
+  feature was auto-approved; the failed environment had to finish deleting before re-provisioning.
+- The azd `prepackage` hook does not run on `azd deploy`; the colophon stamp now also runs as
+  `predeploy` so the deployed footer matches the pushed commit.
+- Live verification: health `ready`; GPT-4.1 and GPT-4.1 mini journeys; expected denial
+  `account_access_denied`; approval flow; App Insights events correlated by trace ID with zero
+  prompt/SSN matches.
 - Diagrams are Mermaid sources rendered to SVG with mermaid-cli and committed,
   so neither GitHub nor the served docs need a runtime renderer.
 

@@ -29,9 +29,21 @@ hooks:
       run: infra/hooks/preprovision.ps1
       interactive: false
       continueOnError: false
+  # Stamp the colophon (commit, date, message) before the remote image build,
+  # because the container build context has no .git folder. predeploy covers
+  # `azd deploy`; prepackage covers `azd package`.
+  predeploy:
+    posix:
+      shell: sh
+      run: node frontend/scripts/build-info.mjs
+      interactive: false
+      continueOnError: false
+    windows:
+      shell: pwsh
+      run: node frontend/scripts/build-info.mjs
+      interactive: false
+      continueOnError: false
   prepackage:
-    # Stamp the colophon (commit, date, message) before the remote image build,
-    # because the container build context has no .git folder.
     posix:
       shell: sh
       run: node frontend/scripts/build-info.mjs

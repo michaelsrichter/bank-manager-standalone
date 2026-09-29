@@ -29,7 +29,7 @@ azd up            # or: make deploy
    `AZURE_BUDGET_EMAIL` (your sign-in) if missing.
 2. **Provision** — `infra/main.bicep` creates the resource group and all
    resources. The Container App starts with a placeholder image.
-3. **Package** — the `prepackage` hook writes
+3. **Package** — the `predeploy` / `prepackage` hook writes
    `frontend/src/generated/build-info.json` (commit SHA, date, message) for the
    footer colophon. Commit and push **before** deploying so the colophon
    matches the pushed release.
@@ -61,6 +61,12 @@ curl -s "$SERVICE_WEB_URL/api/health" | jq .status   # expect "ready"
 | Subscription | MCAPS-Hybrid-REQ-119059-2025-mrichter |
 | Region | eastus2 |
 | azd environment | `bankgov` → resource group `rg-bankgov` |
+| URL | <https://ca-bank-6pdxl7iobaep4.salmonsea-6cb97f40.eastus2.azurecontainerapps.io/> |
+
+One-time subscription prerequisite discovered during the first deploy: VNet-integrated
+Container Apps environments needed the `Microsoft.Network/AllowBringYourOwnPublicIpAddress`  
+feature (`az feature register --namespace Microsoft.Network --name AllowBringYourOwnPublicIpAddress`,
+then `az provider register -n Microsoft.Network`). See [troubleshooting](troubleshooting.md).
 
 ## CI/CD (GitHub Actions)
 

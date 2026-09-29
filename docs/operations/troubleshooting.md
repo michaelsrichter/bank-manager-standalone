@@ -2,6 +2,7 @@
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| Provision fails: `SubscriptionNotRegisteredForFeature ... AllowBringYourOwnPublicIpAddress` | New subscription has not enabled the feature VNet-integrated Container Apps needs | `az feature register --namespace Microsoft.Network --name AllowBringYourOwnPublicIpAddress`, `az provider register -n Microsoft.Network`, delete the failed environment, wait for deletion to finish, re-run `azd provision`. |
 | First page load takes 5–15 s | Scale-to-zero cold start | Expected. Set `minReplicas: 1` in `infra/resources.bicep` for events (adds cost). |
 | Health shows model `misconfigured` — “Identity is not authorized” | Role assignment still propagating (up to ~5 min) or missing | Wait, then check `Cognitive Services OpenAI User` on the Foundry account for `id-web-*`. |
 | Health shows model `unreachable` | Private DNS not resolving from Container Apps | Confirm the private endpoint is `Approved` and the three `privatelink.*` zones are linked to the VNet. |
