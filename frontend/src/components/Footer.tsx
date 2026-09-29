@@ -5,7 +5,6 @@ import { daysSince, formatDate, shortSha } from "../lib/format";
 export const SITE = {
   repoUrl: "https://github.com/michaelsrichter/bank-manager-standalone",
   upstreamUrl: "https://github.com/tmathew1000/bank-manager-standalone",
-  linkedin: "https://www.linkedin.com/in/mikerichter",
   products: [
     { label: "Azure AI Foundry", href: "https://azure.microsoft.com/products/ai-foundry" },
     { label: "Azure Container Apps", href: "https://azure.microsoft.com/products/container-apps" },
@@ -37,9 +36,6 @@ export function Footer({ info = buildInfo, now }: Props) {
         <a href={SITE.repoUrl} target="_blank" rel="noopener noreferrer">
           {s.footer.source}
         </a>
-        <a href={SITE.linkedin} target="_blank" rel="noopener noreferrer">
-          {s.footer.linkedin}
-        </a>
       </nav>
       <p className="footer-products">
         {s.footer.products}:{" "}
@@ -53,7 +49,7 @@ export function Footer({ info = buildInfo, now }: Props) {
         ))}
       </p>
       <p className="footer-built">
-        {s.footer.builtWith}{" "}
+        <strong>{s.footer.authors}</strong> {s.footer.builtWith}{" "}
         <a href={SITE.upstreamUrl} target="_blank" rel="noopener noreferrer">
           tmathew1000/bank-manager-standalone
         </a>

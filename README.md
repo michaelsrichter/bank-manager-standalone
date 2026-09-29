@@ -35,6 +35,10 @@ Everything lives in **[docs/](docs/README.md)** (also served in the app under
 *Docs*): architecture, security, cost, operations, telemetry, health, API,
 code tour, and ADRs.
 
+## Authors
+
+Built by Mike Richter and Thomas Mathew at Microsoft.
+
 ## License
 
 [MIT](LICENSE). See [SECURITY.md](SECURITY.md) to report a vulnerability and

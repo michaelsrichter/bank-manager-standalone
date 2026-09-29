@@ -56,6 +56,7 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | Model + cost visible in UI | ✅ | Requested deployment, actual response model, 4 token categories, estimated cost, trace ID |
 | Alias + GUID, no PII | ✅ | [auth](security/auth.md), [privacy](security/privacy.md) |
 | “Demo only” indicator, no partner names | ✅ | Header badge above the fold + footer |
+| Standard footer | ⚠️ | Privacy, Terms, How built, GitHub, Microsoft products, colophon. Author LinkedIn links omitted at the owner’s request; authors credited by name (Mike Richter and Thomas Mathew, Microsoft) |
 | GDPR cookie acknowledgement | ✅ | Necessary-only by default; analytics opt-in |
 | `/docs` single source of truth, served in app | ✅ | Built to static HTML; diagrams pre-rendered SVG |
 | Rate limiting + request bounds | ✅ | Per-IP and per-session; body/prompt caps — [rate limiting](security/rate-limiting.md) |

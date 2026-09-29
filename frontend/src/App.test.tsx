@@ -72,7 +72,10 @@ describe("Footer", () => {
       "href",
       expect.stringContaining("/commit/abcdef1234567890"),
     );
-    expect(screen.getByRole("link", { name: "Author on LinkedIn" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Built by Mike Richter and Thomas Mathew at Microsoft."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /LinkedIn/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Privacy" })).toBeInTheDocument();
   });
 

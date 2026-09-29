@@ -24,9 +24,9 @@ export const en = {
     terms: "Terms",
     about: "How this was built",
     source: "Source on GitHub",
-    linkedin: "Author on LinkedIn",
     products: "Microsoft products used",
-    builtWith: "Built with GitHub Copilot (Claude Opus 5.5) and forked from",
+    authors: "Built by Mike Richter and Thomas Mathew at Microsoft.",
+    builtWith: "Made with GitHub Copilot (Claude Opus 5.5); forked from",
     lastUpdated: "Last updated",
     daysAgo: (days: number) =>
       days <= 0 ? "today" : days === 1 ? "1 day ago" : `${days} days ago`,
