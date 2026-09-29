@@ -11,8 +11,8 @@ step took — without ever seeing what anyone typed.
 
 | View | What it shows | How to open |
 |---|---|---|
-| **Azure Workbook** “Governed AI Bank Assistant — telemetry” | 30 panels: KPIs, model calls/tokens/latency/cost, Foundry platform metrics and logs, governance decisions and prevented tool calls, ACS runtime metrics, agent runs and span timing, requests, browser timing, exceptions, container events | `azd env get-value AZURE_TELEMETRY_WORKBOOK_URL`, or portal → resource group → Workbooks |
-| **Azure portal dashboard** “Governed AI Bank Assistant” | 9 tiles: links, comparisons, lane results, tokens, model p95, top rules, cost, requests, Foundry metrics | `azd env get-value AZURE_TELEMETRY_DASHBOARD_URL`, or portal → Dashboard hub |
+| **Azure Workbook** “Governed AI Bank Assistant — telemetry” | 29 panels: KPIs; native Foundry platform metrics (requests, input/output tokens, time to response by deployment); model calls/tokens/latency/cost from GenAI spans; Foundry diagnostic logs; governance decisions and prevented tool calls, ACS runtime metrics, agent runs and span timing, requests, browser timing, exceptions, container events | `azd env get-value AZURE_TELEMETRY_WORKBOOK_URL`, or portal → resource group → Workbooks |
+| **Azure portal dashboard** “Governed AI Bank Assistant” | 12 tiles: links, comparisons, lane results, tokens, model p95, top rules, cost, requests, recent agent runs, and native Foundry metric charts (requests, tokens, time to response) | `azd env get-value AZURE_TELEMETRY_DASHBOARD_URL`, or portal → Dashboard hub |
 | **Application Insights** | Transaction search (full span tree per trace ID), Live Metrics, Application map, Failures, Performance | Link on the dashboard |
 | **Azure AI Foundry → project `bank-manager` → Tracing** | GenAI spans (`invoke_agent`, `chat`, `execute_tool`) via the project’s App Insights connection | Link on the dashboard (needs portal network access to Foundry; see below) |
 
@@ -31,7 +31,7 @@ deployed by [`infra/modules/observability.bicep`](../../infra/modules/observabil
 | HTTP to Foundry | Dependency spans for every Azure OpenAI call over the private endpoint | httpx instrumentation (the OpenAI SDK uses httpx) |
 | ACS policy engine | `acs_intervention_{allow,deny,transform}_total`, `acs_intervention_duration_ms` metrics; `acs.decision` span events with decision, reason code, policy ID, duration | ACS `OtelMetricsTelemetrySink` + `SpanEventTelemetrySink` |
 | App events | `ai_call`, `policy_decision`, `approval_decision`, `rate_limited`, `model_selection`, `page_view`, `client_timing` | [events](events.md) |
-| Azure AI Foundry (platform) | Audit, RequestResponse, AzureOpenAIRequestUsage, Trace logs; all platform metrics (tokens, requests, latency, throttling) | Diagnostic settings → Log Analytics |
+| Azure AI Foundry (platform) | Audit, RequestResponse, AzureOpenAIRequestUsage, Trace logs; platform metrics (`ModelRequests`, `InputTokens`, `OutputTokens`, `TimeToResponse`, `ProcessedPromptTokens`, `GeneratedTokens`) | Diagnostic settings → Log Analytics; metrics charted natively from Azure Monitor (multi-dimensional model metrics are not reliably exported to the `AzureMetrics` table) |
 | Container Apps | Console and system logs, environment metrics, 5xx metric alert | Diagnostic settings → Log Analytics |
 | Container Registry | Login and repository events, metrics | Diagnostic settings → Log Analytics |
 
@@ -56,3 +56,17 @@ The Foundry project `bank-manager` has an Application Insights connection, so it
 network access disabled, the Foundry portal needs your IP allowed temporarily:
 `azd env set AZURE_ALLOWED_IPS <your-ip>` and `azd provision` (remove it afterwards).
 The Azure portal workbook and dashboard do not need this.
+
+## Verified live (2026-09-29)
+
+One browser-originated trace (`traceparent` sent by the client) produced, under a
+single operation ID: `POST /api/compare` → `invoke_agent bank-manager` →
+`chat gpt-4.1` (347 input tokens, response model `gpt-4.1-2025-04-14`) →
+`POST /openai/deployments/gpt-4.1/chat/completions` (httpx, private endpoint), plus
+`execute_tool read_account` (baseline) and `acs.evaluate input` (allow) /
+`acs.evaluate pre_tool_call` (deny, `account_access_denied`). Metrics
+`gen_ai.client.token.usage`, `gen_ai.client.operation.duration`,
+`acs_intervention_*`, and `bank_manager.*` arrived in `AppMetrics`; Foundry
+`RequestResponse` and `AzureOpenAIRequestUsage` logs arrived in `AzureDiagnostics`.
+A search for prompt text, synthetic SSNs, and customer names across every table
+returned zero rows.

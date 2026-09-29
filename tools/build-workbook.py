@@ -14,6 +14,39 @@ from pathlib import Path
 OUT = Path(__file__).resolve().parents[1] / "infra" / "workbooks" / "bank-manager-telemetry.workbook.json"
 WORKSPACE = "microsoft.operationalinsights/workspaces"
 
+def foundry_metric(name: str, title: str, metrics: list[tuple[str, str, int]], width: str = "50") -> None:
+    """Native Azure Monitor metrics chart read straight from the Foundry account."""
+    items.append(
+        {
+            "type": 10,
+            "content": {
+                "chartId": f"foundry-{name}",
+                "version": "MetricsItem/2.0",
+                "size": 0,
+                "chartType": 2,
+                "resourceType": "microsoft.cognitiveservices/accounts",
+                "metricScope": 0,
+                "resourceIds": ["__FOUNDRY_ID__"],
+                "timeContextFromParameter": "TimeRange",
+                "timeContext": {"durationMs": 86400000},
+                "metrics": [
+                    {
+                        "namespace": "microsoft.cognitiveservices/accounts",
+                        "metric": f"microsoft.cognitiveservices/accounts-{category}-{metric}",
+                        "aggregation": aggregation,
+                        "splitBy": "ModelDeploymentName",
+                    }
+                    for category, metric, aggregation in metrics
+                ],
+                "title": title,
+                "gridSettings": {"rowLimit": 10000},
+            },
+            "customWidth": width,
+            "name": f"foundry-{name}",
+        }
+    )
+
+
 items: list[dict] = []
 
 
@@ -126,6 +159,26 @@ union
 )
 
 text("ai", "## 1. AI model calls (Azure AI Foundry)")
+foundry_metric(
+    "requests",
+    "Foundry: model requests by deployment (platform metric)",
+    [("Models - HTTP Requests", "ModelRequests", 1)],
+)
+foundry_metric(
+    "tokens",
+    "Foundry: input and output tokens by deployment (platform metric)",
+    [("Models - Usage", "InputTokens", 1), ("Models - Usage", "OutputTokens", 1)],
+)
+foundry_metric(
+    "latency",
+    "Foundry: time to response by deployment (ms, platform metric)",
+    [("Models - Latency", "TimeToResponse", 4)],
+)
+foundry_metric(
+    "aoai-usage",
+    "Foundry: processed prompt and generated tokens (Azure OpenAI usage metric)",
+    [("Azure OpenAI - Usage", "ProcessedPromptTokens", 1), ("Azure OpenAI - Usage", "GeneratedTokens", 1)],
+)
 query(
     "calls-by-model",
     "Model calls by deployment",
@@ -187,12 +240,24 @@ AppDependencies
 )
 query(
     "foundry-metrics",
-    "Foundry platform metrics (Azure Monitor)",
+    "Foundry platform metrics: tokens and requests (Azure Monitor)",
     """
 AzureMetrics
 | where ResourceProvider == "MICROSOFT.COGNITIVESERVICES"
-| where MetricName in ("ProcessedPromptTokens", "GeneratedTokens", "AzureOpenAIRequests", "ModelRequests", "TokenTransaction")
+| where MetricName in ("ProcessedPromptTokens", "GeneratedTokens", "InputTokens", "OutputTokens", "ModelRequests", "AzureOpenAIRequests")
 | summarize Total = sum(Total) by bin(TimeGenerated, 15m), MetricName
+""",
+    "timechart",
+    "50",
+)
+query(
+    "foundry-latency",
+    "Foundry platform latency (ms, server side)",
+    """
+AzureMetrics
+| where ResourceProvider == "MICROSOFT.COGNITIVESERVICES"
+| where MetricName in ("TimeToResponse", "TimeToLastByte", "Latency")
+| summarize AvgMs = avg(Average), MaxMs = max(Maximum) by bin(TimeGenerated, 15m), MetricName
 """,
     "timechart",
     "50",

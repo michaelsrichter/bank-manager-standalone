@@ -100,9 +100,13 @@ resource workbook 'Microsoft.Insights/workbooks@2023-06-01' = {
     sourceId: logAnalytics.id
     version: 'Notebook/1.0'
     serializedData: replace(
-      loadTextContent('../workbooks/bank-manager-telemetry.workbook.json'),
-      '__WORKSPACE_ID__',
-      logAnalytics.id
+      replace(
+        loadTextContent('../workbooks/bank-manager-telemetry.workbook.json'),
+        '__WORKSPACE_ID__',
+        logAnalytics.id
+      ),
+      '__FOUNDRY_ID__',
+      foundry.id
     )
   }
 }
@@ -132,6 +136,43 @@ func logTile(x int, y int, w int, h int, title string, kql string, control strin
       { name: 'IsQueryContainTimeRange', value: false, isOptional: true }
     ]
     settings: {}
+  }
+}
+
+func metricTile(x int, y int, title string, resourceId string, metrics array) object => {
+  position: { x: x, y: y, colSpan: 6, rowSpan: 4 }
+  metadata: {
+    type: 'Extension/HubsExtension/PartType/MonitorChartPart'
+    inputs: [
+      { name: 'options', isOptional: true }
+      { name: 'sharedTimeRange', isOptional: true }
+    ]
+    settings: {
+      content: {
+        options: {
+          chart: {
+            title: title
+            titleKind: 2
+            metrics: map(metrics, m => {
+              resourceMetadata: { id: resourceId }
+              name: m.name
+              aggregationType: m.aggregation
+              namespace: 'microsoft.cognitiveservices/accounts'
+              metricVisualization: { displayName: m.label }
+            })
+            grouping: { dimension: 'ModelDeploymentName', sort: 2, top: 10 }
+            visualization: {
+              chartType: 2
+              legendVisualization: { isVisible: true, position: 2, hideSubtitle: false }
+              axisVisualization: {
+                x: { isVisible: true, axisType: 2 }
+                y: { isVisible: true, axisType: 1 }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -180,7 +221,17 @@ resource dashboard 'Microsoft.Portal/dashboards@2022-12-01-preview' = {
           logTile(12, 4, 6, 4, 'Top governed rules', 'AppEvents | where Name == "policy_decision" and tostring(Properties.lane) == "governed" | summarize Count = count() by Rule = tostring(Properties.reason) | top 10 by Count', 'AnalyticsGrid', '', logAnalytics.id)
           logTile(0, 8, 6, 4, 'Estimated model cost (USD)', 'AppEvents | where Name == "ai_call" | summarize CostUSD = sum(todouble(Properties.estimated_cost_usd)) by bin(TimeGenerated, 1h)', 'FrameControlChart', 'StackedColumn', logAnalytics.id)
           logTile(6, 8, 6, 4, 'Requests by route and status', 'AppRequests | summarize Requests = count(), P95ms = percentile(DurationMs, 95) by Name, ResultCode | order by Requests desc', 'AnalyticsGrid', '', logAnalytics.id)
-          logTile(12, 8, 6, 4, 'Foundry platform metrics', 'AzureMetrics | where ResourceProvider == "MICROSOFT.COGNITIVESERVICES" | summarize Total = sum(Total) by MetricName', 'AnalyticsGrid', '', logAnalytics.id)
+          logTile(12, 8, 6, 4, 'Agent runs (GenAI spans)', 'AppDependencies | where Name == "invoke_agent bank-manager" | project TimeGenerated, TraceId = OperationId, DurationMs, Tool = tostring(Properties["bank_manager.selected_tool"]), Governed = tostring(Properties["bank_manager.governed.status"]), Rule = tostring(Properties["bank_manager.governed.reason"]) | top 20 by TimeGenerated desc', 'AnalyticsGrid', '', logAnalytics.id)
+          metricTile(0, 12, 'Foundry: model requests by deployment', foundry.id, [
+            { name: 'ModelRequests', aggregation: 1, label: 'Model requests' }
+          ])
+          metricTile(6, 12, 'Foundry: input / output tokens', foundry.id, [
+            { name: 'InputTokens', aggregation: 1, label: 'Input tokens' }
+            { name: 'OutputTokens', aggregation: 1, label: 'Output tokens' }
+          ])
+          metricTile(12, 12, 'Foundry: time to response (ms)', foundry.id, [
+            { name: 'TimeToResponse', aggregation: 4, label: 'Time to response' }
+          ])
         ]
       }
     ]

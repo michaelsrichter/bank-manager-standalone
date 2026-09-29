@@ -95,6 +95,146 @@
       "name": "ai"
     },
     {
+      "type": 10,
+      "content": {
+        "chartId": "foundry-requests",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "chartType": 2,
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "metricScope": 0,
+        "resourceIds": [
+          "__FOUNDRY_ID__"
+        ],
+        "timeContextFromParameter": "TimeRange",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts-Models - HTTP Requests-ModelRequests",
+            "aggregation": 1,
+            "splitBy": "ModelDeploymentName"
+          }
+        ],
+        "title": "Foundry: model requests by deployment (platform metric)",
+        "gridSettings": {
+          "rowLimit": 10000
+        }
+      },
+      "customWidth": "50",
+      "name": "foundry-requests"
+    },
+    {
+      "type": 10,
+      "content": {
+        "chartId": "foundry-tokens",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "chartType": 2,
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "metricScope": 0,
+        "resourceIds": [
+          "__FOUNDRY_ID__"
+        ],
+        "timeContextFromParameter": "TimeRange",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts-Models - Usage-InputTokens",
+            "aggregation": 1,
+            "splitBy": "ModelDeploymentName"
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts-Models - Usage-OutputTokens",
+            "aggregation": 1,
+            "splitBy": "ModelDeploymentName"
+          }
+        ],
+        "title": "Foundry: input and output tokens by deployment (platform metric)",
+        "gridSettings": {
+          "rowLimit": 10000
+        }
+      },
+      "customWidth": "50",
+      "name": "foundry-tokens"
+    },
+    {
+      "type": 10,
+      "content": {
+        "chartId": "foundry-latency",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "chartType": 2,
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "metricScope": 0,
+        "resourceIds": [
+          "__FOUNDRY_ID__"
+        ],
+        "timeContextFromParameter": "TimeRange",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts-Models - Latency-TimeToResponse",
+            "aggregation": 4,
+            "splitBy": "ModelDeploymentName"
+          }
+        ],
+        "title": "Foundry: time to response by deployment (ms, platform metric)",
+        "gridSettings": {
+          "rowLimit": 10000
+        }
+      },
+      "customWidth": "50",
+      "name": "foundry-latency"
+    },
+    {
+      "type": 10,
+      "content": {
+        "chartId": "foundry-aoai-usage",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "chartType": 2,
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "metricScope": 0,
+        "resourceIds": [
+          "__FOUNDRY_ID__"
+        ],
+        "timeContextFromParameter": "TimeRange",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts-Azure OpenAI - Usage-ProcessedPromptTokens",
+            "aggregation": 1,
+            "splitBy": "ModelDeploymentName"
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts-Azure OpenAI - Usage-GeneratedTokens",
+            "aggregation": 1,
+            "splitBy": "ModelDeploymentName"
+          }
+        ],
+        "title": "Foundry: processed prompt and generated tokens (Azure OpenAI usage metric)",
+        "gridSettings": {
+          "rowLimit": 10000
+        }
+      },
+      "customWidth": "50",
+      "name": "foundry-aoai-usage"
+    },
+    {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
@@ -178,9 +318,9 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "AzureMetrics\n| where ResourceProvider == \"MICROSOFT.COGNITIVESERVICES\"\n| where MetricName in (\"ProcessedPromptTokens\", \"GeneratedTokens\", \"AzureOpenAIRequests\", \"ModelRequests\", \"TokenTransaction\")\n| summarize Total = sum(Total) by bin(TimeGenerated, 15m), MetricName",
+        "query": "AzureMetrics\n| where ResourceProvider == \"MICROSOFT.COGNITIVESERVICES\"\n| where MetricName in (\"ProcessedPromptTokens\", \"GeneratedTokens\", \"InputTokens\", \"OutputTokens\", \"ModelRequests\", \"AzureOpenAIRequests\")\n| summarize Total = sum(Total) by bin(TimeGenerated, 15m), MetricName",
         "size": 0,
-        "title": "Foundry platform metrics (Azure Monitor)",
+        "title": "Foundry platform metrics: tokens and requests (Azure Monitor)",
         "noDataMessage": "No data in this time range yet.",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
@@ -188,6 +328,22 @@
         "visualization": "timechart"
       },
       "name": "foundry-metrics",
+      "customWidth": "50"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AzureMetrics\n| where ResourceProvider == \"MICROSOFT.COGNITIVESERVICES\"\n| where MetricName in (\"TimeToResponse\", \"TimeToLastByte\", \"Latency\")\n| summarize AvgMs = avg(Average), MaxMs = max(Maximum) by bin(TimeGenerated, 15m), MetricName",
+        "size": 0,
+        "title": "Foundry platform latency (ms, server side)",
+        "noDataMessage": "No data in this time range yet.",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "foundry-latency",
       "customWidth": "50"
     },
     {
