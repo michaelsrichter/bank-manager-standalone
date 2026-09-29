@@ -1,0 +1,11 @@
+.azure
+.eval-venv
+.git
+.venv
+__pycache__
+evaluation
+infra
+scripts
+wheels
+*.pyc
+*.zip

@@ -1,0 +1,13 @@
+.azure/
+.eval-venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.zip
+.env
+.env.*
+evaluation/artifacts/
+infra/main.json
+infra/main.parameters.json
+wheels/*.whl
+
