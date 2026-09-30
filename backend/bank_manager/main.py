@@ -41,6 +41,8 @@ SECURITY_HEADERS = {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Frame-Options": "DENY",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    # HTTPS-only site (Container Apps redirects HTTP); browsers remember that for 1 year.
+    "Strict-Transport-Security": "max-age=31536000",
 }
 
 

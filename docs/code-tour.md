@@ -43,7 +43,7 @@ server-side and never trusted from the request body (see the
 
 <!-- tour:snippet id="main-guard" file="backend/bank_manager/main.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L206-L217"><code>backend/bank_manager/main.py</code></a> · lines 206–217</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L208-L219"><code>backend/bank_manager/main.py</code></a> · lines 208–219</summary>
 
 ```python
 @app.middleware("http")

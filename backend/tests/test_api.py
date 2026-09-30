@@ -236,6 +236,7 @@ def test_spa_serves_assets_index_and_security_headers(client):
     index = client.get("/demo")
     assert index.text == "<html>app</html>"
     assert "frame-ancestors 'none'" in index.headers["content-security-policy"]
+    assert index.headers["strict-transport-security"] == "max-age=31536000"
     asset = client.get("/assets/app.js")
     assert "immutable" in asset.headers["cache-control"]
     assert client.get("/api/unknown").status_code == 404

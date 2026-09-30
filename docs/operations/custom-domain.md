@@ -9,6 +9,8 @@ you own it. Azure then gives the name a free HTTPS certificate and renews it for
 
 ## Current settings
 
+**Status: live since 2026-09-30** at <https://bankmanager.eps-demos.site>. The certificate is Azure-managed, issued by DigiCert (GeoTrust TLS RSA CA G1), valid to 2027-03-30, and renews automatically. HTTP redirects to HTTPS, and the app sends HSTS.
+
 | Item | Value |
 |---|---|
 | Custom domain | `bankmanager.eps-demos.site` |

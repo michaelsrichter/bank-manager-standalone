@@ -62,7 +62,8 @@ curl -s "$SERVICE_WEB_URL/api/health" | jq .status   # expect "ready"
 | Subscription | MCAPS-Hybrid-REQ-119059-2025-mrichter |
 | Region | eastus2 |
 | azd environment | `bankgov` → resource group `rg-bankgov` |
-| URL | <https://ca-bank-6pdxl7iobaep4.salmonsea-6cb97f40.eastus2.azurecontainerapps.io/> |
+| URL | <https://bankmanager.eps-demos.site> (custom domain) |
+| Default URL | <https://ca-bank-6pdxl7iobaep4.salmonsea-6cb97f40.eastus2.azurecontainerapps.io/> |
 
 One-time subscription prerequisite discovered during the first deploy: VNet-integrated
 Container Apps environments needed the `Microsoft.Network/AllowBringYourOwnPublicIpAddress`  
