@@ -87,6 +87,7 @@ def action_from_intent(intent: BankIntent) -> dict[str, Any] | None:
     return {"tool_name": intent.intent, "args": args}
 
 
+# tour:begin router-normalize
 def normalize_account_id(value: str | None) -> str:
     if value is None:
         return ""
@@ -94,6 +95,9 @@ def normalize_account_id(value: str | None) -> str:
     if not re.fullmatch(r"A-\d{1,8}", normalized):
         raise IntentRoutingError("The model returned an invalid account ID.")
     return normalized
+
+
+# tour:end router-normalize
 
 
 def usage_from_completion(raw_usage: Any) -> Usage | None:

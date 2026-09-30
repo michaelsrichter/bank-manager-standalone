@@ -107,8 +107,10 @@ export function HomePage() {
 
       <h2>Want the technical details?</h2>
       <p>
-        Read <a href="#/docs/architecture/overview.md">how it is built</a>, the{" "}
-        <a href="#/docs/security/threat-model.md">security notes</a>, the{" "}
+        Start with the <a href="#/docs/governance-tour.md">governance code tour</a>. It walks
+        through the Agent Governance Toolkit and the ACS policy engine one step at a time, with the
+        real code. You can also read <a href="#/docs/architecture/diagram.md">how it is built</a>,
+        the <a href="#/docs/security/threat-model.md">security notes</a>, the general{" "}
         <a href="#/docs/code-tour.md">code tour</a>, or{" "}
         <a href="#/docs/cost/cost-to-run.md">what it costs to run</a>.
       </p>

@@ -1,0 +1,34 @@
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 30, "rankSpacing": 70, "padding": 14, "htmlLabels": true}, "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "15px", "lineColor": "#44546a", "clusterBkg": "#fafbfc", "clusterBorder": "#8a96a8"}}}%%
+flowchart LR
+  subgraph who["<b>Who</b>"]
+    direction TB
+    mi["<b>App identity</b><br/>user-assigned managed identity<br/><i>id-web-…</i>"]
+    dev["<b>Developer</b><br/>az login · optional<br/><i>same data-plane roles</i>"]
+  end
+
+  subgraph what["<b>Can do only this</b>"]
+    direction TB
+    r1["<b>AcrPull</b><br/>download the app image"]
+    r2["<b>Cognitive Services OpenAI User</b><br/>call model deployments<br/>(no management rights)"]
+    r3["<b>Monitoring Metrics Publisher</b><br/>write telemetry only"]
+  end
+
+  subgraph where["<b>On exactly this resource</b>"]
+    direction TB
+    acr["<b>Container Registry</b><br/>admin user OFF · anonymous pull OFF"]
+    foundry["<b>Azure AI Foundry</b><br/>API keys OFF"]
+    appi["<b>Application Insights</b><br/>local (key) auth OFF"]
+  end
+
+  mi --> r1 --> acr
+  mi --> r2 --> foundry
+  mi --> r3 --> appi
+  dev -.-> r2
+  dev -.-> r3
+
+  classDef id fill:#e3ecf8,stroke:#0f5ca8,stroke-width:2px,color:#1b1f24
+  classDef role fill:#efe4fb,stroke:#6b3fa0,stroke-width:2px,color:#1b1f24
+  classDef res fill:#dff3e4,stroke:#0b7a3b,stroke-width:2px,color:#1b1f24
+  class mi,dev id
+  class r1,r2,r3 role
+  class acr,foundry,appi res

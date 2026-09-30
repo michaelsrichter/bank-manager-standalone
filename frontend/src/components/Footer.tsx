@@ -32,7 +32,12 @@ export function Footer({ info = buildInfo, now }: Props) {
       <nav aria-label="Footer" className="footer-links">
         <a href="#/privacy">{s.footer.privacy}</a>
         <a href="#/terms">{s.footer.terms}</a>
-        <a href="#/docs/architecture/overview.md">{s.footer.about}</a>
+        <a href="#/docs/architecture/diagram.md">{s.footer.about}</a>
+        <a href="#/docs/security/threat-model.md">{s.footer.security}</a>
+        <a href="#/docs/code-tour.md">{s.footer.codeTour}</a>
+        <a href="#/docs/governance-tour.md">{s.footer.governanceTour}</a>
+        <a href="#/docs/cost/cost-to-run.md">{s.footer.cost}</a>
+        <a href="#/docs/README.md">{s.footer.docsHome}</a>
         <a href={SITE.repoUrl} target="_blank" rel="noopener noreferrer">
           {s.footer.source}
         </a>

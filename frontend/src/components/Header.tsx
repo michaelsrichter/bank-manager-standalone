@@ -9,11 +9,26 @@ interface Props {
   onToggleTheme: () => void;
 }
 
-const LINKS: { page: Route["page"]; href: string; key: "home" | "demo" | "health" | "docs" }[] = [
-  { page: "home", href: "#/", key: "home" },
-  { page: "demo", href: "#/demo", key: "demo" },
-  { page: "health", href: "#/health", key: "health" },
-  { page: "docs", href: "#/docs/README.md", key: "docs" },
+const TOUR_DOC = "governance-tour.md";
+
+const LINKS: {
+  href: string;
+  key: "home" | "demo" | "health" | "tour" | "docs";
+  isCurrent: (route: Route) => boolean;
+}[] = [
+  { href: "#/", key: "home", isCurrent: (r) => r.page === "home" },
+  { href: "#/demo", key: "demo", isCurrent: (r) => r.page === "demo" },
+  { href: "#/health", key: "health", isCurrent: (r) => r.page === "health" },
+  {
+    href: `#/docs/${TOUR_DOC}`,
+    key: "tour",
+    isCurrent: (r) => r.page === "docs" && r.doc === TOUR_DOC,
+  },
+  {
+    href: "#/docs/README.md",
+    key: "docs",
+    isCurrent: (r) => r.page === "docs" && r.doc !== TOUR_DOC,
+  },
 ];
 
 export function Header({ route, theme, onToggleTheme }: Props) {
@@ -46,7 +61,7 @@ export function Header({ route, theme, onToggleTheme }: Props) {
             <a
               key={link.key}
               href={link.href}
-              aria-current={route.page === link.page ? "page" : undefined}
+              aria-current={link.isCurrent(route) ? "page" : undefined}
               onClick={() => setOpen(false)}
             >
               {s.nav[link.key]}

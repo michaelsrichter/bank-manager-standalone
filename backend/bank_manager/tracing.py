@@ -212,6 +212,7 @@ def record_lane(result: Mapping[str, Any]) -> None:
         tool_executions.add(1, {"bank_manager.lane": str(result["lane"]), "gen_ai.tool.name": tool})
 
 
+# tour:begin tracing-acs-sink
 class SpanEventTelemetrySink:
     """ACS TelemetrySink that records each redaction-safe decision on the active span."""
 
@@ -236,6 +237,8 @@ class SpanEventTelemetrySink:
         span.add_event("acs.decision", attributes)
         span.set_attribute("acs.decision", str(decision or "none"))
         span.set_attribute("acs.reason_code", event.reason_code or "none")
+
+    # tour:end tracing-acs-sink
 
     def force_flush(self) -> None:
         return None

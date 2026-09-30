@@ -27,6 +27,7 @@ class UnknownPersonaError(ValueError):
     pass
 
 
+# tour:begin governance-build-control
 class HostAnnotators:
     """Deterministic stand-ins for the manifest's LLM/classifier annotators."""
 
@@ -56,6 +57,10 @@ def build_control(manifest: Path = MANIFEST) -> AgentControl:
     )
 
 
+# tour:end governance-build-control
+
+
+# tour:begin governance-snapshot
 def manager_snapshot(
     persona_id: str,
     *,
@@ -78,6 +83,9 @@ def manager_snapshot(
     }
 
 
+# tour:end governance-snapshot
+
+
 async def evaluate_input(
     control: AgentControl,
     prompt: str,
@@ -94,6 +102,7 @@ async def evaluate_input(
     return outcome("allow", result.verdict.reason, result.verdict.message)
 
 
+# tour:begin governance-evaluate-action
 async def evaluate_action(
     control: AgentControl,
     action: Mapping[str, Any],
@@ -115,6 +124,10 @@ async def evaluate_action(
     return outcome("allow", result.verdict.reason, result.verdict.message)
 
 
+# tour:end governance-evaluate-action
+
+
+# tour:begin governance-run-action
 async def run_action(
     control: AgentControl,
     action: Mapping[str, Any],
@@ -143,6 +156,7 @@ async def run_action(
         post_result.transformed_policy_target_applied
         or post_result.transformed_policy_target is not None
     )
+    # tour:end governance-run-action
     return outcome(
         "transform" if transformed else "allow",
         post_result.verdict.reason or result.pre_tool_call_result.verdict.reason,

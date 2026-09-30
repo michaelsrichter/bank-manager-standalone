@@ -1,10 +1,13 @@
 // Converts the canonical /docs Markdown into static HTML at build time so the
 // app can serve documentation without repository access (eps-demo-docs).
-// Fails the build on raw Mermaid, broken internal links, or missing images.
+// Fails the build on raw Mermaid, broken internal links, missing images, stale
+// code-tour snippets, or highlighter markup that would render as literal text.
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Marked } from "marked";
+import { highlightCode } from "./highlight.mjs";
+import { syncTours } from "./tour.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../..");
@@ -13,7 +16,9 @@ const outFile = resolve(here, "../src/generated/docs.json");
 const assetsOut = resolve(here, "../public/docs-assets");
 const repoUrl =
   process.env.REPO_URL || "https://github.com/michaelsrichter/bank-manager-standalone";
-const skipRepoLinkCheck = process.env.DOCS_SKIP_REPO_LINK_CHECK === "1";
+// Container builds copy only docs/, so source-dependent checks (repo links and
+// code-tour snippets) run in CI and local builds instead.
+const containerBuild = process.env.DOCS_CONTAINER_BUILD === "1";
 
 function walk(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -25,7 +30,7 @@ function walk(dir) {
 const files = walk(docsRoot).filter((file) => file.endsWith(".md"));
 const toKey = (file) => relative(docsRoot, file).split(sep).join("/");
 const keys = new Set(files.map(toKey));
-const problems = [];
+const problems = containerBuild ? [] : syncTours({ repoUrl });
 const pages = {};
 
 for (const file of files) {
@@ -37,6 +42,11 @@ for (const file of files) {
   const baseDir = posix.dirname(key);
   const marked = new Marked({
     gfm: true,
+    renderer: {
+      code({ text, lang }) {
+        return highlightCode(text, (lang || "").trim().split(/\s+/)[0]);
+      },
+    },
     walkTokens(token) {
       if (token.type !== "link" && token.type !== "image") return;
       const href = token.href || "";
@@ -55,8 +65,7 @@ for (const file of files) {
         return;
       }
       const repoPath = posix.normalize(posix.join("docs", target));
-      // Container builds only copy docs/, so repo-link checks run in CI and locally.
-      if (!skipRepoLinkCheck && !existsSync(resolve(repoRoot, repoPath))) {
+      if (!containerBuild && !existsSync(resolve(repoRoot, repoPath))) {
         problems.push(`${key}: broken repo link ${href}`);
       }
       token.href = `${repoUrl}/blob/main/${repoPath.replace(/\/$/, "")}`;
@@ -67,6 +76,9 @@ for (const file of files) {
     /<a href="(https?:[^"]+)"/g,
     '<a href="$1" target="_blank" rel="noopener noreferrer"',
   );
+  if (/&lt;span class=&quot;hljs|&amp;lt;span/.test(html)) {
+    problems.push(`${key}: escaped syntax-highlighter markup would render as text`);
+  }
   const title = (source.match(/^#\s+(.+)$/m) || [null, key])[1].trim();
   pages[key] = { title, html };
 }

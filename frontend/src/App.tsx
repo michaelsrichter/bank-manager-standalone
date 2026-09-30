@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { CookieBanner } from "./components/CookieBanner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Footer } from "./components/Footer";
@@ -14,10 +14,13 @@ import {
   type Theme,
 } from "./lib/preferences";
 import { useRoute } from "./lib/router";
-import { DocsPage } from "./pages/DocsPage";
+import { Skeleton } from "./components/Skeleton";
 import { HealthPage } from "./pages/HealthPage";
 import { HomePage } from "./pages/HomePage";
 import { PrivacyPage, TermsPage } from "./pages/LegalPages";
+
+// Docs (including highlighted code tours) load only when opened, keeping first load small.
+const DocsPage = lazy(() => import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })));
 
 export function App() {
   const route = useRoute();
@@ -50,7 +53,11 @@ export function App() {
           {route.page === "home" && <HomePage />}
           {route.page === "demo" && <DemoPage />}
           {route.page === "health" && <HealthPage />}
-          {route.page === "docs" && <DocsPage doc={route.doc} />}
+          {route.page === "docs" && (
+            <Suspense fallback={<Skeleton lines={8} label="Loading documentation" />}>
+              <DocsPage doc={route.doc} />
+            </Suspense>
+          )}
           {route.page === "privacy" && <PrivacyPage />}
           {route.page === "terms" && <TermsPage />}
         </ErrorBoundary>

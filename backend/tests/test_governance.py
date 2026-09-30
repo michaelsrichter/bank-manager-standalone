@@ -37,6 +37,7 @@ def test_assigned_account_read_is_allowed(control, snapshot):
     assert outcome["status"] == "allow"
 
 
+# tour:begin test-unassigned-denied
 def test_unassigned_account_read_is_denied_with_exact_reason(control, snapshot):
     outcome = asyncio.run(evaluate_action(control, read("A-2001"), snapshot))
     assert outcome == {
@@ -44,6 +45,9 @@ def test_unassigned_account_read_is_denied_with_exact_reason(control, snapshot):
         "reason": "account_access_denied",
         "message": "The bank manager is not assigned to this account.",
     }
+
+
+# tour:end test-unassigned-denied
 
 
 def test_bypass_language_is_denied_at_input(control, snapshot):
@@ -142,11 +146,15 @@ def test_rejection_never_runs_tool(control, snapshot):
     assert result["reason"] == "operator_rejected"
 
 
+# tour:begin test-approval-hard-denial
 def test_approval_cannot_override_hard_denial(control, snapshot):
     action = {"tool_name": "create_transfer", "args": {"account_id": "A-1001", "amount": 60000.0}}
     result = asyncio.run(resolve_approval(control, action, snapshot, approve=True))
     assert result["status"] == "deny"
     assert result["toolExecuted"] is False
+
+
+# tour:end test-approval-hard-denial
 
 
 def test_unknown_persona_is_rejected():

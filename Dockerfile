@@ -2,6 +2,7 @@
 # Multi-stage build: ACS native wheel (Rust) + pinned OPA + React frontend,
 # then a slim non-root Python runtime. Built remotely by ACR Tasks via `azd`.
 
+# tour:begin dockerfile-acs-build
 FROM python:3.12-slim AS acs-build
 ARG AGT_COMMIT=c07577d9785d4f64225a7b367cb2a978e9fc784d
 WORKDIR /build
@@ -27,6 +28,7 @@ RUN apt-get update \
       --output opa \
     && echo "${OPA_SHA256}  opa" | sha256sum --check \
     && chmod 0755 opa
+# tour:end dockerfile-acs-build
 
 FROM node:24-slim AS web-build
 WORKDIR /src/frontend
@@ -34,7 +36,7 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 COPY docs/ /src/docs/
-RUN DOCS_SKIP_REPO_LINK_CHECK=1 npm run build
+RUN DOCS_CONTAINER_BUILD=1 npm run build
 
 FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \

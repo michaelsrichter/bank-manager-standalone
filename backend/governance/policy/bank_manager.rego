@@ -27,6 +27,7 @@ snapshot := object.get(input, "snapshot", {})
 tool_name := object.get(object.get(input, "tool", {}), "name", "")
 annotations := object.get(input, "annotations", {})
 
+# tour:begin rego-input
 input_verdict := deny("input_regex_fraud_or_pii", "Input contains account takeover language, PII, or payment manipulation instructions.") if {
 	input.intervention_point == "input"
 	regex.match(`(?i)(unauthorized\s+transfer|bypass\s+(approval|limits?)|steal\s+funds|\b\d{3}-\d{2}-\d{4}\b|\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b)`, input_text)
@@ -34,7 +35,9 @@ input_verdict := deny("input_regex_fraud_or_pii", "Input contains account takeov
 	input.intervention_point == "input"
 	ann_flag("input_security")
 }
+# tour:end rego-input
 
+# tour:begin rego-pre-tool
 pre_tool_call_verdict := deny("restricted_mode_lockdown", "Restricted mode is active. Sensitive bank tools and external endpoints are blocked unconditionally.") if {
 	input.intervention_point == "pre_tool_call"
 	restricted_mode_active
@@ -45,6 +48,7 @@ pre_tool_call_verdict := deny("restricted_mode_lockdown", "Restricted mode is ac
 } else := deny("account_id_required", "The banking operation requires an account ID.") if {
 	account_scoped_tool
 	account_id == ""
+# tour:begin rego-account-access
 } else := deny("account_access_denied", "The bank manager is not assigned to this account.") if {
 	account_scoped_tool
 	not account_is_assigned
@@ -54,6 +58,7 @@ pre_tool_call_verdict := deny("restricted_mode_lockdown", "Restricted mode is ac
 } else := deny("auditor_write_denied", "Auditors have read-only access and cannot perform account mutations.") if {
 	account_mutation_tool
 	manager_role == "auditor"
+# tour:end rego-account-access
 } else := deny("payment_amount_hard_limit", "Transfers over $50,000 are never allowed.") if {
 	is_payment_tool
 	amount > 50000
@@ -73,6 +78,7 @@ pre_tool_call_verdict := deny("restricted_mode_lockdown", "Restricted mode is ac
 	is_payment_tool
 	amount > 10000
 	not bool_snapshot("high_value_transfer_authorized")
+# tour:end rego-pre-tool
 } else := escalate("sensitive_or_risky_transfer_review", "Sensitive accounts or risky transfers require human fraud review.") if {
 	tool_name == "prepare_transfer"
 	transfer_needs_review
@@ -104,6 +110,7 @@ pre_tool_call_verdict := deny("restricted_mode_lockdown", "Restricted mode is ac
 	ann_flag("fraud_classifier")
 }
 
+# tour:begin rego-post-tool
 post_tool_call_verdict := redact_ssn if {
 	input.intervention_point == "post_tool_call"
 	redact_ssn
@@ -111,6 +118,7 @@ post_tool_call_verdict := redact_ssn if {
 	input.intervention_point == "post_tool_call"
 	redact_card
 }
+# tour:end rego-post-tool
 
 ann_flag(name) if object.get(object.get(annotations, name, {}), "flagged", false) == true
 ann_flag(name) if lower(object.get(object.get(annotations, name, {}), "label", "")) in {"deny", "block", "unsafe", "fraud", "high_risk"}
@@ -151,6 +159,7 @@ fraud_agent_high_risk if object.get(snapshot, "fraud_risk_score", 0) >= 70
 
 result_value := object.get(input.policy_target, "value", {})
 result_text := object.get(result_value, "text", sprintf("%v", [result_value]))
+# tour:begin rego-redact
 redact_ssn := transform_redact("redact_ssn_in_tool_result", "Tool result contains an SSN-shaped value.", "[SSN-REDACTED]", m[0]) if {
 	m := regex.find_n(`\b\d{3}-\d{2}-\d{4}\b`, result_text, 1)
 	count(m) > 0
@@ -171,3 +180,4 @@ transform_redact(reason, message, replacement, match) := {
 
 deny(reason, message) := {"decision": "deny", "reason": reason, "message": message}
 escalate(reason, message) := {"decision": "escalate", "reason": reason, "message": message}
+# tour:end rego-redact

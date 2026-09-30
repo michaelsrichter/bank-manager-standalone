@@ -64,6 +64,7 @@ test_assigned_account_read_allows if {
 	verdict.decision == "allow"
 }
 
+# tour:begin rego-test-unassigned
 test_unassigned_account_read_denies if {
 	verdict := guard.pre_tool_call_verdict with input as {
 		"intervention_point": "pre_tool_call",
@@ -77,6 +78,7 @@ test_unassigned_account_read_denies if {
 	verdict.decision == "deny"
 	verdict.reason == "account_access_denied"
 }
+# tour:end rego-test-unassigned
 
 test_auditor_cannot_prepare_transfer if {
 	verdict := guard.pre_tool_call_verdict with input as {

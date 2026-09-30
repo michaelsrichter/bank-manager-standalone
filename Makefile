@@ -6,7 +6,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help install install-acs install-opa dev dev-backend dev-frontend test test-backend \
         test-frontend lint guidance-lint lint-backend lint-frontend bicep-lint policy-test \
-        format openapi deploy traffic
+        format openapi deploy traffic tour diagrams
 
 AGT_COMMIT ?= c07577d9785d4f64225a7b367cb2a978e9fc784d
 OPA_VERSION ?= v1.21.0
@@ -79,6 +79,13 @@ format: ## Auto-format backend + frontend
 
 openapi: ## Regenerate docs/api/openapi.json from FastAPI
 	cd backend && FAKE_AI=1 ../$(PY) -c "import json; from bank_manager.main import create_app; print(json.dumps(create_app().openapi(), indent=2))" > ../docs/api/openapi.json
+
+tour: ## Refresh code-tour excerpts in /docs from the tour:begin/end source markers
+	cd frontend && npm run tour:sync
+
+diagrams: ## Re-render docs/architecture/diagrams/*.mmd to SVG
+	cd docs/architecture/diagrams && for d in architecture identity acs-flow request-flow; do \
+		npx -y @mermaid-js/mermaid-cli@11 -i $$d.mmd -o $$d.svg -p puppeteer.json -C render.css -b white; done
 
 traffic: ## Seed ~60 min of realistic demo traffic against the deployed app (real models, ~USD 0.15)
 	python3 tools/generate-traffic.py --url "$$(azd env get-value SERVICE_WEB_URL)" --minutes $${MINUTES:-60}

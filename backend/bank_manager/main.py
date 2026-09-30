@@ -202,6 +202,7 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
     app = FastAPI(title="Bank Manager Governance Demo", docs_url=None, redoc_url=None)
     app.state.deps = deps
 
+    # tour:begin main-guard
     @app.middleware("http")
     async def guard_requests(request: Request, call_next: Any) -> Response:
         if request.method == "POST":
@@ -214,6 +215,8 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
         for header, value in SECURITY_HEADERS.items():
             response.headers.setdefault(header, value)
         return response
+
+    # tour:end main-guard
 
     def rate_limited(request: Request, route: str) -> JSONResponse | None:
         decision = deps.limiter.check(client_ip(request), session_id(request))
@@ -309,6 +312,7 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
         )
 
+    # tour:begin main-approval
     @app.post("/api/approval", openapi_extra=request_body(ApprovalRequest))
     async def approval(request: Request) -> Response:
         limited = rate_limited(request, "approval")
@@ -331,6 +335,7 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
         result = await resolve_approval(
             deps.control, action, snapshot, approve=body.decision == "approve"
         )
+        # tour:end main-approval
         deps.sink.emit(
             "approval_decision",
             decision=body.decision,

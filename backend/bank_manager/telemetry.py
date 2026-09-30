@@ -44,6 +44,7 @@ class EventSink(Protocol):
     def emit(self, name: str, **properties: Any) -> None: ...
 
 
+# tour:begin telemetry-allowlist
 def safe_properties(name: str, properties: dict[str, Any]) -> dict[str, Any]:
     allowed = EVENTS.get(name)
     if allowed is None:
@@ -53,6 +54,9 @@ def safe_properties(name: str, properties: dict[str, Any]) -> dict[str, Any]:
         for key, value in properties.items()
         if key in allowed and isinstance(value, (str, int, float, bool))
     }
+
+
+# tour:end telemetry-allowlist
 
 
 class LoggingEventSink:

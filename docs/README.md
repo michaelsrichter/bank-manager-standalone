@@ -18,7 +18,7 @@ need rules enforced by software, not just good prompts.
 | Area | Contents |
 |---|---|
 | [architecture/overview.md](architecture/overview.md) | What the app does, why it matters, who it is for |
-| [architecture/diagram.md](architecture/diagram.md) | Architecture and request-flow diagrams |
+| [architecture/diagram.md](architecture/diagram.md) | Architecture layers, identity map, ACS flow, request sequence |
 | [architecture/azure-services.md](architecture/azure-services.md) | Every Azure service used and why |
 | [architecture/data-flow.md](architecture/data-flow.md) | How a request moves through the system |
 | [security/threat-model.md](security/threat-model.md) | Threats, mitigations, and known gaps |
@@ -37,6 +37,7 @@ need rules enforced by software, not just good prompts.
 | [telemetry/observability.md](telemetry/observability.md) | OpenTelemetry pipeline, Azure workbook, and dashboard |
 | [telemetry/events.md](telemetry/events.md) | Every telemetry event the app sends |
 | [health/README.md](health/README.md) | Health page, probe states, caching |
+| [governance-tour.md](governance-tour.md) | **Agent Governance Toolkit / ACS code tour**: the three checks, human approval, redaction, tests |
 | [code-tour.md](code-tour.md) | Important request paths with source excerpts |
 | [build-journal.md](build-journal.md) | Decisions, dead ends, and known gaps |
 | [adr/](adr/0001-use-bicep.md) | Architecture Decision Records |
@@ -59,7 +60,7 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | “Demo only” indicator, no partner names | ✅ | Header badge above the fold + footer |
 | Standard footer | ⚠️ | Privacy, Terms, How built, GitHub, Microsoft products, colophon. Author LinkedIn links omitted at the owner’s request; authors credited by name (Mike Richter and Thomas Mathew, Microsoft) |
 | GDPR cookie acknowledgement | ✅ | Necessary-only by default; analytics opt-in |
-| `/docs` single source of truth, served in app | ✅ | Built to static HTML; diagrams pre-rendered SVG |
+| `/docs` single source of truth, served in app | ✅ | Built to static HTML; diagrams pre-rendered SVG; code tours use build-time source extraction with drift checks, build-time syntax highlighting, collapsible blocks, and copy buttons |
 | Rate limiting + request bounds | ✅ | Per-IP and per-session; body/prompt caps — [rate limiting](security/rate-limiting.md) |
 | Streaming progress, safe tool visibility | ✅ | Ordered NDJSON with sequence numbers; no chain-of-thought |
 | CI coverage gates (BE ≥ 70% / FE ≥ 60%) | ✅ | `.github/workflows/ci.yml`, `FAKE_AI=1` |

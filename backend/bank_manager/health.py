@@ -48,6 +48,7 @@ class Probe(Protocol):
     async def run(self) -> ProbeResult: ...
 
 
+# tour:begin health-policy-probe
 class PolicyEngineProbe:
     """Negative probe: an unassigned-account read must be denied with the exact reason."""
 
@@ -76,6 +77,9 @@ class PolicyEngineProbe:
         return ProbeResult(self.name, "misconfigured", "Expected denial was not produced.", True)
 
 
+# tour:end health-policy-probe
+
+
 class ModelDeploymentProbe:
     """No-inference readiness: an intentionally invalid request (empty messages).
 
@@ -94,6 +98,7 @@ class ModelDeploymentProbe:
     async def run(self) -> ProbeResult:
         return await asyncio.to_thread(self._probe)
 
+    # tour:begin health-model-probe
     def _probe(self) -> ProbeResult:
         try:
             self._client.chat.completions.create(
@@ -102,6 +107,8 @@ class ModelDeploymentProbe:
         except Exception as error:
             return self._classify(error)
         return ProbeResult(self.name, "available", "Deployment answered.", self.critical)
+
+    # tour:end health-model-probe
 
     def _classify(self, error: Exception) -> ProbeResult:
         status = getattr(error, "status_code", None)

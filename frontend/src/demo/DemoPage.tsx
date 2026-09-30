@@ -298,21 +298,6 @@ export function DemoPage({
               </ul>
             </>
           )}
-          <div className="button-column">
-            <button type="button" onClick={() => startNewThread()} disabled={busy}>
-              {s.newChat}
-            </button>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "thread.clear" })}
-              disabled={busy}
-            >
-              {s.clearChat}
-            </button>
-            <button type="button" className="danger" onClick={resetDemo} disabled={busy}>
-              {s.resetDemo}
-            </button>
-          </div>
           <p className="profile">
             {s.profile}: <strong>{profile.alias}</strong>{" "}
             <button
@@ -324,27 +309,6 @@ export function DemoPage({
             </button>
           </p>
           <p className="muted small">{s.profileNote}</p>
-        </details>
-        <details className="controls-panel">
-          <summary>
-            {s.history} ({earlier.length})
-          </summary>
-          {earlier.length === 0 ? (
-            <p className="muted">{s.historyEmpty}</p>
-          ) : (
-            <ul className="history">
-              {earlier.map((item) => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => dispatch({ type: "thread.open", id: item.id })}
-                  >
-                    {s.openThread}: “{item.turns[0].prompt}” ({item.turns.length})
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </details>
       </aside>
 
@@ -370,6 +334,64 @@ export function DemoPage({
             {prompt.length}/{maxChars}
           </p>
         </form>
+
+        <div className="chat-toolbar" role="toolbar" aria-label={s.chatActions}>
+          <span className="chat-status" aria-live="polite">
+            {thread.turns.length === 0 ? s.chatEmpty : s.chatCount(thread.turns.length)}
+          </span>
+          <button
+            type="button"
+            onClick={() => startNewThread()}
+            disabled={busy || thread.turns.length === 0}
+            title={s.newChatHint}
+          >
+            <span aria-hidden="true">＋ </span>
+            {s.newChat}
+          </button>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "thread.clear" })}
+            disabled={busy || thread.turns.length === 0}
+            title={s.clearChatHint}
+          >
+            {s.clearChat}
+          </button>
+          <details className="history-menu">
+            <summary>
+              {s.history} ({earlier.length})
+            </summary>
+            <div className="history-panel">
+              {earlier.length === 0 ? (
+                <p className="muted">{s.historyEmpty}</p>
+              ) : (
+                <ul className="history">
+                  {earlier.map((item) => (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          dispatch({ type: "thread.open", id: item.id });
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}
+                      >
+                        {s.openThread}: “{item.turns[0].prompt}” ({item.turns.length})
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </details>
+          <button
+            type="button"
+            className="danger"
+            onClick={resetDemo}
+            disabled={busy}
+            title={s.resetDemoHint}
+          >
+            {s.resetDemo}
+          </button>
+        </div>
 
         {thread.turns.length === 0 ? (
           <div className="empty">

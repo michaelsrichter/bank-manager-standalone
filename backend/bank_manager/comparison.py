@@ -69,6 +69,7 @@ def project_result(
     }
 
 
+# tour:begin comparison-baseline
 def run_baseline(action: Mapping[str, Any] | None) -> dict[str, Any]:
     if action is None:
         return project_result(
@@ -94,6 +95,9 @@ def run_baseline(action: Mapping[str, Any] | None) -> dict[str, Any]:
         tool_executed=True,
         intervention_point=None,
     )
+
+
+# tour:end comparison-baseline
 
 
 async def run_governed(
@@ -133,6 +137,7 @@ async def run_governed(
         )
         return
 
+    # tour:begin comparison-pre-tool
     yield "step", {"id": "governed.pre_tool", "state": "started"}
     with tracing.policy_span("pre_tool_call") as span:
         pre_outcome = await evaluate_action(control, action, snapshot)
@@ -150,6 +155,7 @@ async def run_governed(
             ),
         )
         return
+    # tour:end comparison-pre-tool
 
     yield "step", {"id": "governed.tool", "state": "started"}
     with tracing.tool_span(str(action["tool_name"]), "governed") as span:
@@ -168,6 +174,7 @@ async def run_governed(
     )
 
 
+# tour:begin comparison-approval
 async def resolve_approval(
     control: AgentControl,
     action: Mapping[str, Any],
@@ -193,6 +200,9 @@ async def resolve_approval(
         tool_executed=result["status"] != "deny",
         intervention_point="post_tool_call",
     )
+
+
+# tour:end comparison-approval
 
 
 ERROR_MESSAGES = {

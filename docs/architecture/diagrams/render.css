@@ -1,0 +1,3 @@
+svg, svg * , .label, .nodeLabel, .edgeLabel, .cluster-label, foreignObject div, foreignObject span {
+  font-family: "Segoe UI", Arial, Helvetica, sans-serif !important;
+}

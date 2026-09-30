@@ -1,38 +1,51 @@
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "16px"}}}%%
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 36, "rankSpacing": 56, "padding": 16, "htmlLabels": true}, "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "15px", "lineColor": "#44546a", "clusterBkg": "#f7f9fb", "clusterBorder": "#8a96a8", "edgeLabelBackground": "#ffffff"}}}%%
 flowchart TB
-  user["<b>Browser</b><br/>React + TypeScript SPA<br/>alias + GUID kept in local storage"]
-  subgraph azure["<b>Azure subscription · resource group rg-&lt;env&gt;</b>"]
-    direction TB
-    subgraph vnet["<b>Virtual network</b> (10.40.0.0/16)"]
-      direction TB
-      subgraph aca["<b>Azure Container Apps</b> (Consumption, scale 0–2)"]
-        api["<b>FastAPI backend</b><br/>rate limits · NDJSON streaming<br/>health · safe telemetry"]
-        acs["<b>ACS policy engine</b><br/>Agent Control Specification<br/>+ Open Policy Agent (Rego)"]
-        tools["<b>Synthetic bank tools</b><br/>no side effects"]
-      end
-      pe["<b>Private endpoint</b>"]
-    end
-    foundry["<b>Azure AI Foundry</b> (AIServices)<br/>gpt-4.1 · gpt-4.1-mini<br/>content filters ON · keys disabled<br/>public network OFF"]
-    acr["<b>Azure Container Registry</b><br/>image pulled with managed identity"]
-    mi["<b>User-assigned managed identity</b>"]
-    appi["<b>Application Insights</b><br/>Entra-only ingestion"]
-    law["<b>Log Analytics</b> (30 days)"]
-    guard["<b>Budget + 5xx alert</b>"]
+  subgraph L1["<b>① Visitor</b> — anyone with the link; no sign-in"]
+    direction LR
+    browser["<b>Browser</b><br/>React app"]
+    local["<b>Kept in the browser only</b><br/>nickname · random ID · chat history"]
+    browser --- local
   end
-  user -- "HTTPS (public ingress)" --> api
-  api --> acs --> tools
-  api -- "Entra token" --> pe --> foundry
-  mi -. "Cognitive Services OpenAI User" .-> foundry
-  mi -. "AcrPull" .-> acr
-  mi -. "Monitoring Metrics Publisher" .-> appi
-  api -- "operational events only" --> appi --> law
-  guard -. watches .-> aca
 
-  classDef edge fill:#fde2e1,stroke:#b3261e,color:#1b1f24
-  classDef app fill:#e3ecf8,stroke:#0f5ca8,color:#1b1f24
-  classDef ai fill:#dff3e4,stroke:#0b7a3b,color:#1b1f24
-  classDef ops fill:#fff1d6,stroke:#8a5a00,color:#1b1f24
-  class user edge
-  class api,acs,tools,pe app
-  class foundry ai
-  class acr,mi,appi,law,guard ops
+  subgraph L2["<b>② Azure Container Apps</b> — one container · VNet-integrated · scales 0–2"]
+    direction LR
+    api["<b>API</b><br/>FastAPI<br/>size + rate limits<br/>streams each step"]
+    agent["<b>Agent harness</b><br/>asks the model to<br/>pick exactly one tool"]
+    acs["<b>ACS policy engine</b><br/>Agent Governance Toolkit<br/>manifest + Rego (OPA)"]
+    tools["<b>Bank tools</b><br/>synthetic data<br/>no side effects"]
+    api --> agent --> acs -->|only if allowed| tools
+  end
+
+  subgraph L3["<b>③ Private AI access</b> — no public route to the model"]
+    direction LR
+    pe["<b>Private endpoint</b><br/>+ private DNS"]
+    models["<b>Azure AI Foundry</b><br/>gpt-4.1 · gpt-4.1-mini<br/>content filters ON<br/>API keys OFF · public access OFF"]
+    pe --> models
+  end
+
+  subgraph L4["<b>④ Operations</b> — everything below uses managed identity"]
+    direction LR
+    appi["<b>Application Insights</b><br/>traces · metrics · events"]
+    law["<b>Log Analytics</b><br/>30-day retention"]
+    views["<b>Workbook</b><br/>and dashboard"]
+    guard["<b>Guardrails</b><br/>$50/month budget<br/>sustained 5xx alert"]
+    appi --> law --> views
+    views ~~~ guard
+  end
+
+  L1 ==>|"HTTPS · untrusted input"| L2
+  L2 ==>|"Entra ID token · managed identity"| L3
+  L3 -.->|"OpenTelemetry + Foundry diagnostic logs"| L4
+
+  classDef edge fill:#fde7e6,stroke:#b3261e,stroke-width:2px,color:#1b1f24
+  classDef app fill:#e3ecf8,stroke:#0f5ca8,stroke-width:2px,color:#1b1f24
+  classDef gov fill:#efe4fb,stroke:#6b3fa0,stroke-width:3px,color:#1b1f24
+  classDef net fill:#fff4d6,stroke:#8a5a00,stroke-width:2px,color:#1b1f24
+  classDef ai fill:#dff3e4,stroke:#0b7a3b,stroke-width:2px,color:#1b1f24
+  classDef ops fill:#eceff3,stroke:#44546a,stroke-width:2px,color:#1b1f24
+  class browser,local edge
+  class api,agent,tools app
+  class acs gov
+  class pe net
+  class models ai
+  class appi,law,views,guard ops

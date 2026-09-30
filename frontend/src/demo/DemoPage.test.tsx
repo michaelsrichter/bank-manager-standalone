@@ -234,6 +234,28 @@ describe("DemoPage", () => {
     });
   });
 
+  it("keeps chat actions visible and moves a finished chat into Earlier chats", async () => {
+    const user = userEvent.setup();
+    render(<DemoPage api={makeApi() as never} newId={newId} />);
+    const toolbar = await screen.findByRole("toolbar", { name: "Chat actions" });
+    expect(within(toolbar).getByText("No requests in this chat yet")).toBeInTheDocument();
+    expect(within(toolbar).getByRole("button", { name: /New chat/ })).toBeDisabled();
+    expect(within(toolbar).getByRole("button", { name: "Clear current chat" })).toBeDisabled();
+
+    await user.click(await screen.findByRole("button", { name: /Prepare transfer \$12,000/ }));
+    await screen.findByText("Prepared transfer of $12,000.00");
+    expect(within(toolbar).getByText("This chat: 1 request")).toBeInTheDocument();
+
+    await user.click(within(toolbar).getByRole("button", { name: /New chat/ }));
+    expect(screen.getByText("No requests yet")).toBeInTheDocument();
+    expect(within(toolbar).getByText("Earlier chats (1)")).toBeInTheDocument();
+
+    await user.click(within(toolbar).getByText("Earlier chats (1)"));
+    await user.click(within(toolbar).getByRole("button", { name: /Open: “Prepare transfer/ }));
+    expect(screen.getByText("Prepared transfer of $12,000.00")).toBeInTheDocument();
+    expect(toolbar.querySelector("details")).not.toHaveAttribute("open");
+  });
+
   it("resets the anonymous profile", async () => {
     const user = userEvent.setup();
     render(<DemoPage api={makeApi() as never} newId={newId} />);

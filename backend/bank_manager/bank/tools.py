@@ -22,6 +22,7 @@ class UnsupportedToolError(ValueError):
     pass
 
 
+# tour:begin tools-validate
 def validate_action(action: Mapping[str, Any]) -> dict[str, Any]:
     """Validate a tool call that crossed the browser boundary."""
     tool_name = action.get("tool_name")
@@ -45,6 +46,9 @@ def validate_action(action: Mapping[str, Any]) -> dict[str, Any]:
                 raise UnsupportedToolError("Invalid destination account ID.")
             clean["destination_account_id"] = destination
     return {"tool_name": tool_name, "args": clean}
+
+
+# tour:end tools-validate
 
 
 def execute_tool(tool_name: str, args: Mapping[str, Any]) -> dict[str, Any]:

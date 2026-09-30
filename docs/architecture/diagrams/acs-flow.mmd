@@ -1,0 +1,34 @@
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 36, "rankSpacing": 56, "padding": 16, "htmlLabels": true}, "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "15px", "lineColor": "#44546a", "clusterBkg": "#f7f9fb", "clusterBorder": "#8a96a8", "edgeLabelBackground": "#ffffff"}}}%%
+flowchart TB
+  prompt["<b>1 · Request</b><br/>“Prepare a $12,000 transfer from A-1001”"]
+  model["<b>2 · Model picks one tool</b><br/>prepare_transfer(A-1001, 12000)<br/><i>it never decides what is allowed</i>"]
+  snap["<b>3 · Server builds the snapshot</b><br/>role · assigned accounts · toggles<br/><i>never trusted from the browser</i>"]
+  p1["<b>① input</b><br/>Is the request itself safe?"]
+  p2["<b>② pre_tool_call</b><br/>Is this exact tool call allowed?"]
+  human["<b>Person decides</b><br/>Approve or Reject<br/><i>ACS checks again</i>"]
+  run["<b>Tool runs</b>"]
+  p3["<b>③ post_tool_call</b><br/>Does the result leak private data?"]
+  out["<b>Result shown</b><br/>SSN / card numbers → [REDACTED]"]
+  blocked["<b>Blocked</b><br/>tool never runs<br/>the rule is named<br/><i>e.g. account_access_denied</i>"]
+
+  prompt --> model --> snap --> p1
+  p1 -->|allow| p2
+  p2 -->|allow| run
+  p2 -->|escalate| human
+  human -->|approve| run
+  run --> p3
+  p3 -->|"allow / transform"| out
+  p1 -->|deny| blocked
+  p2 -->|deny| blocked
+  human -->|reject| blocked
+
+  classDef start fill:#e3ecf8,stroke:#0f5ca8,stroke-width:2px,color:#1b1f24
+  classDef check fill:#efe4fb,stroke:#6b3fa0,stroke-width:3px,color:#1b1f24
+  classDef person fill:#fff4d6,stroke:#8a5a00,stroke-width:2px,color:#1b1f24
+  classDef bad fill:#fde7e6,stroke:#b3261e,stroke-width:2px,color:#1b1f24
+  classDef good fill:#dff3e4,stroke:#0b7a3b,stroke-width:2px,color:#1b1f24
+  class prompt,model,snap start
+  class p1,p2,p3 check
+  class human person
+  class blocked bad
+  class run,out good

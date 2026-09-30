@@ -152,6 +152,7 @@ export async function streamCompare(
   let buffer = "";
   let lastSeq = 0;
 
+  // tour:begin api-deliver
   const deliver = (line: string) => {
     if (!line.trim()) return;
     const event = JSON.parse(line) as StreamEvent;
@@ -159,6 +160,7 @@ export async function streamCompare(
     lastSeq = event.seq;
     onEvent(event);
   };
+  // tour:end api-deliver
 
   for (;;) {
     let timer: ReturnType<typeof setTimeout> | undefined;
