@@ -14,3 +14,7 @@ param allowedIpRules = empty(readEnvironmentVariable('AZURE_ALLOWED_IPS', ''))
   ? []
   : split(readEnvironmentVariable('AZURE_ALLOWED_IPS', ''), ',')
 param webImageName = readEnvironmentVariable('SERVICE_WEB_IMAGE_NAME', '')
+// Custom domain: set AZURE_CUSTOM_DOMAIN (docs/operations/custom-domain.md). The preprovision
+// hook sets AZURE_CUSTOM_DOMAIN_CERT_READY once the managed certificate has been issued.
+param customDomainName = readEnvironmentVariable('AZURE_CUSTOM_DOMAIN', '')
+param customDomainCertificateReady = toLower(readEnvironmentVariable('AZURE_CUSTOM_DOMAIN_CERT_READY', 'false')) == 'true'

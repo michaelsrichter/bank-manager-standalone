@@ -53,6 +53,7 @@ curl -s "$SERVICE_WEB_URL/api/health" | jq .status   # expect "ready"
 | `AZURE_BUDGET_EMAIL` | your sign-in | Budget + 5xx alert recipient |
 | `AZURE_GRANT_DEVELOPER_ACCESS` | `true` | Give you the same data-plane roles as the app |
 | `AZURE_ALLOWED_IPS` | empty | Temporary operator IPs for Foundry’s public endpoint (local dev only) |
+| `AZURE_CUSTOM_DOMAIN` | empty | Friendly hostname with a free managed certificate — see [custom domain](custom-domain.md) |
 
 ## Current deployment
 

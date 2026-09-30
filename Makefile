@@ -6,7 +6,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help install install-acs install-opa dev dev-backend dev-frontend test test-backend \
         test-frontend lint guidance-lint lint-backend lint-frontend bicep-lint policy-test \
-        format openapi deploy traffic tour diagrams
+        format openapi deploy traffic tour diagrams custom-domain
 
 AGT_COMMIT ?= c07577d9785d4f64225a7b367cb2a978e9fc784d
 OPA_VERSION ?= v1.21.0
@@ -86,6 +86,9 @@ tour: ## Refresh code-tour excerpts in /docs from the tour:begin/end source mark
 diagrams: ## Re-render docs/architecture/diagrams/*.mmd to SVG
 	cd docs/architecture/diagrams && for d in architecture identity acs-flow request-flow; do \
 		npx -y @mermaid-js/mermaid-cli@11 -i $$d.mmd -o $$d.svg -p puppeteer.json -C render.css -b white; done
+
+custom-domain: ## Bind DOMAIN=host.example.com with a managed certificate (DNS records first)
+	pwsh -NoProfile -File tools/custom-domain.ps1 -Domain "$(DOMAIN)"
 
 traffic: ## Seed ~60 min of realistic demo traffic against the deployed app (real models, ~USD 0.15)
 	python3 tools/generate-traffic.py --url "$$(azd env get-value SERVICE_WEB_URL)" --minutes $${MINUTES:-60}

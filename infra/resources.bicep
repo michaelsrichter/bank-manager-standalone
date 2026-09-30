@@ -13,6 +13,12 @@ param grantDeveloperAccess bool
 param allowedIpRules array
 param webImageName string
 
+@description('Optional custom hostname, e.g. bankmanager.example.com. Needs the CNAME and asuid TXT DNS records first; see docs/operations/custom-domain.md.')
+param customDomainName string = ''
+
+@description('True once the free managed certificate for customDomainName has been issued (set by infra/hooks/preprovision.*).')
+param customDomainCertificateReady bool = false
+
 @description('Budget start (first of month). A param so it is computed once, not re-invalidated each deploy.')
 param budgetStartDate string = utcNow('yyyy-MM-01')
 
@@ -288,6 +294,24 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2025-01-01' = {
   }
 }
 
+// Free Azure-managed TLS certificate for the custom domain (auto-renewed).
+var managedCertificateName = take('mc-${replace(customDomainName, '.', '-')}', 60)
+var managedCertificateId = '${containerEnv.id}/managedCertificates/${managedCertificateName}'
+
+resource managedCertificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-01-01' = if (!empty(customDomainName)) {
+  parent: containerEnv
+  name: managedCertificateName
+  location: location
+  tags: tags
+  properties: {
+    subjectName: customDomainName
+    // Proves control of the name through the CNAME that points at the app.
+    domainControlValidation: 'CNAME'
+  }
+  // The hostname must already be on the app (phase 1) before issuance.
+  dependsOn: [web]
+}
+
 resource containerEnvDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'to-log-analytics'
   scope: containerEnv
@@ -321,6 +345,24 @@ resource web 'Microsoft.App/containerApps@2025-01-01' = {
         targetPort: 8000
         transport: 'auto'
         allowInsecure: false
+        // Custom domain (docs/operations/custom-domain.md). Two phases, because the
+        // free managed certificate can only be issued once the hostname is on the app:
+        // 1) hostname added with bindingType Disabled + certificate requested;
+        // 2) once the certificate is issued, bound with SNI.
+        customDomains: empty(customDomainName)
+          ? []
+          : [
+              customDomainCertificateReady
+                ? {
+                    name: customDomainName
+                    bindingType: 'SniEnabled'
+                    certificateId: managedCertificateId
+                  }
+                : {
+                    name: customDomainName
+                    bindingType: 'Disabled'
+                  }
+            ]
       }
       registries: [
         {
@@ -464,6 +506,9 @@ output containerAppName string = web.name
 output foundryEndpoint string = 'https://${foundryName}.openai.azure.com/'
 output foundryAccountName string = foundry.name
 output webUrl string = 'https://${web.properties.configuration.ingress.fqdn}'
+output containerEnvironmentName string = containerEnv.name
+output customDomainVerificationId string = web.properties.customDomainVerificationId
+output customDomainUrl string = empty(customDomainName) ? '' : 'https://${customDomainName}'
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
 output logAnalyticsWorkspaceId string = logAnalytics.id
 output workbookUrl string = observability.outputs.workbookUrl

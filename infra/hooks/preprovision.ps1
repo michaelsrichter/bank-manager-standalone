@@ -19,3 +19,23 @@ if (-not $env:AZURE_BUDGET_EMAIL) {
     $budgetEmail = az account show --query user.name -o tsv
     azd env set AZURE_BUDGET_EMAIL $budgetEmail
 }
+
+# Custom domain, phase 2 (docs/operations/custom-domain.md): once the free managed
+# certificate has been issued, bind the hostname with SNI on this provision.
+$domain = $env:AZURE_CUSTOM_DOMAIN
+$ready = "false"
+if ($domain -and $env:RESOURCE_GROUP_NAME -and $env:AZURE_CONTAINER_ENVIRONMENT_NAME) {
+    $count = az containerapp env certificate list `
+        -g $env:RESOURCE_GROUP_NAME -n $env:AZURE_CONTAINER_ENVIRONMENT_NAME `
+        --managed-certificates-only `
+        --query "length([?properties.subjectName=='$domain' && properties.provisioningState=='Succeeded'])" `
+        -o tsv 2>$null
+    if ($count -and [int]$count -gt 0) { $ready = "true" }
+}
+if ($env:AZURE_CUSTOM_DOMAIN_CERT_READY -ne $ready) {
+    azd env set AZURE_CUSTOM_DOMAIN_CERT_READY $ready
+}
+if ($domain) {
+    $phase = if ($ready -eq "true") { "binding with the issued certificate" } else { "adding hostname and requesting a certificate" }
+    Write-Host "Custom domain ${domain}: $phase"
+}

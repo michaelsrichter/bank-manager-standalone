@@ -31,6 +31,7 @@ need rules enforced by software, not just good prompts.
 | [cost/cost-to-run.md](cost/cost-to-run.md) | Monthly cost today |
 | [cost/cost-at-scale.md](cost/cost-at-scale.md) | Cost at 10x and 100x usage |
 | [operations/deploy.md](operations/deploy.md) | Deploy with `azd up` |
+| [operations/custom-domain.md](operations/custom-domain.md) | Custom domain + free managed certificate |
 | [operations/rollback.md](operations/rollback.md) | Undo a bad release |
 | [operations/troubleshooting.md](operations/troubleshooting.md) | Common problems and fixes |
 | [operations/local-dev.md](operations/local-dev.md) | Run locally, with or without a real model |
@@ -72,7 +73,7 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | Uniform CLI `dev` / `test` / `lint` / `deploy` | ✅ | [`Makefile`](../Makefile) |
 | Microsoft Agent Framework for orchestration | ⚠️ | Not used: one structured-output call, no agent loop — [ADR 0009](adr/0009-direct-structured-output-no-agent-framework.md) |
 | PR preview deploy + CD on merge | ⚠️ | `deploy.yml` is ready but inert until OIDC variables are set — [deploy](operations/deploy.md) |
-| Custom domain | ⚠️ | Not configured; default `*.azurecontainerapps.io` hostname |
+| Custom domain | ⚠️ | `bankmanager.eps-demos.site` prepared in Bicep (managed certificate, two-phase bind); waiting on Namecheap DNS records — [custom domain](operations/custom-domain.md) |
 | Durable server-side history | ➖ | Not needed: history stays in browser storage only |
 
 ## Architecture Decision Records

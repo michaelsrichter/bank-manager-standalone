@@ -34,6 +34,12 @@ param allowedIpRules array = []
 @description('Container image for the web service. azd sets SERVICE_WEB_IMAGE_NAME after the first deploy.')
 param webImageName string = ''
 
+@description('Optional custom hostname (e.g. bankmanager.example.com). See docs/operations/custom-domain.md.')
+param customDomainName string = ''
+
+@description('Set by infra/hooks/preprovision.* once the managed certificate is issued.')
+param customDomainCertificateReady bool = false
+
 var ownerAlias = split(budgetContactEmail, '@')[0]
 
 var tags = {
@@ -63,6 +69,8 @@ module resources 'resources.bicep' = {
     grantDeveloperAccess: grantDeveloperAccess
     allowedIpRules: allowedIpRules
     webImageName: webImageName
+    customDomainName: customDomainName
+    customDomainCertificateReady: customDomainCertificateReady
   }
 }
 
@@ -73,6 +81,9 @@ output AZURE_CONTAINER_APP_NAME string = resources.outputs.containerAppName
 output AZURE_AI_ENDPOINT string = resources.outputs.foundryEndpoint
 output AZURE_AI_ACCOUNT_NAME string = resources.outputs.foundryAccountName
 output SERVICE_WEB_URL string = resources.outputs.webUrl
+output AZURE_CONTAINER_ENVIRONMENT_NAME string = resources.outputs.containerEnvironmentName
+output AZURE_CUSTOM_DOMAIN_VERIFICATION_ID string = resources.outputs.customDomainVerificationId
+output CUSTOM_DOMAIN_URL string = resources.outputs.customDomainUrl
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = resources.outputs.appInsightsConnectionString
 output LOG_ANALYTICS_WORKSPACE_ID string = resources.outputs.logAnalyticsWorkspaceId
 output AZURE_TELEMETRY_WORKBOOK_URL string = resources.outputs.workbookUrl
