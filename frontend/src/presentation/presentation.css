@@ -260,6 +260,64 @@
 .screen-stage a {
   pointer-events: none;
 }
+/* Inside a scaled stage (Demo Window and console previews) the slide fills the
+   1600 × 900 design canvas, with fixed sizes instead of viewport-based ones. */
+.fit-stage .slide-frame {
+  width: 100%;
+  min-height: 756px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  overflow: visible;
+  gap: 24px;
+}
+.fit-stage .slide-frame h2 {
+  font-size: 4.2rem;
+}
+.fit-stage .slide-kicker,
+.fit-stage .title-details {
+  font-size: 1.1rem;
+}
+.fit-stage .slide-lead {
+  font-size: 1.9rem;
+}
+.fit-stage .slide-bullets,
+.fit-stage .slide-steps {
+  font-size: 1.6rem;
+}
+.fit-stage .slide-card,
+.fit-stage .slide-compare article,
+.fit-stage .honest-callout {
+  font-size: 1.3rem;
+  padding: 22px 26px;
+}
+.fit-stage .slide-quote {
+  font-size: 2.4rem;
+}
+.fit-stage .slide-chain span {
+  font-size: 1.35rem;
+}
+.fit-stage .slide-code pre {
+  max-height: none;
+  font-size: 1.15rem;
+}
+.fit-stage .slide-frame footer {
+  font-size: 1rem;
+}
+/* Buttons for the presenter are not useful to the audience. */
+.fit-stage .launch-links {
+  display: none;
+}
+.screen-shell[data-mode="slide"],
+.screen-shell[data-mode="qr"] {
+  background: radial-gradient(circle at top right, var(--surface-2), var(--bg));
+}
+.console-preview,
+.console-next__preview {
+  background: radial-gradient(circle at top right, var(--surface-2), var(--bg)) !important;
+}
 .screen-shell {
   position: fixed;
   inset: 0;
@@ -298,6 +356,10 @@
   clip: rect(0 0 0 0);
 }
 .screen-badge {
+  color: var(--muted);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   position: absolute;
   right: 14px;
   bottom: 10px;
@@ -310,26 +372,46 @@
 .screen-shell[data-mode="black"] .screen-badge {
   display: none;
 }
+.screen-shell {
+  color: var(--text);
+}
 .screen-controls {
   position: absolute;
   left: 14px;
   bottom: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: calc(100% - 28px);
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  color: var(--muted);
+  background: var(--surface);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 22%);
+  font-size: 0.8rem;
   transition: opacity 0.3s;
+}
+.screen-app {
+  background: var(--bg);
 }
 .screen-shell[data-controls="hidden"] .screen-controls {
   opacity: 0;
   pointer-events: none;
 }
+/* Presenter console (adapted from the ELK Burgers presentation console). */
 .console {
-  max-width: 1500px;
-  margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr);
+  grid-template-columns: minmax(0, 1.55fr) minmax(22rem, 1fr);
+  grid-template-areas:
+    "bar bar"
+    "stage notes"
+    "strip strip"
+    "links links";
   gap: 1rem;
-}
-.console-bar,
-.console-strip {
-  grid-column: 1 / -1;
+  width: min(100%, 112rem);
+  margin: 0 auto;
 }
 .console-bar,
 .console-stage,
@@ -338,40 +420,327 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+}
+.console .eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.console-bar {
+  grid-area: bar;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem 1.2rem;
+  padding: 1rem 1.2rem;
+}
+.console-bar h1 {
+  margin: 0.1rem 0 0;
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  line-height: 1.2;
+}
+.console-bar__window {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.console-alert {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+.console-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--bad-bg);
+  color: var(--bad-text);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.console-status::before {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--baseline);
+  content: "";
+}
+.console-status[data-connected="true"] {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+.console-status[data-connected="true"]::before {
+  background: var(--governed);
+}
+.console-stage {
+  grid-area: stage;
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
   padding: 1rem;
 }
+.console-stage__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.console-stage__heading h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.console-previews {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(9rem, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+}
 .console-preview,
-.console-next {
+.console-next__preview {
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: var(--surface-2);
-  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--bg);
 }
-.console-stage {
+.console-preview__note {
+  position: absolute;
+  inset: 0;
   display: grid;
-  gap: 1rem;
+  place-content: center;
+  gap: 0.4rem;
+  padding: 1.5rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.5;
 }
-.console-stage nav,
-.console-stage div[role="group"],
-.console-bar,
-.console-strip {
+.console-preview__note strong {
+  color: var(--text);
+  font-size: 1.3rem;
+}
+.console-next {
+  display: grid;
+  gap: 0.4rem;
+  align-content: start;
+}
+.console-next p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+.console-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.console-nav span {
+  flex: 1;
+  color: var(--muted);
+  font-weight: 700;
+  text-align: center;
+}
+.console-nav button {
+  min-height: 3.2rem;
+  min-width: 8rem;
+  padding: 0 1.2rem;
+  border-radius: 0.8rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.console-nav .console-nav__next {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-contrast);
+}
+.console-nav button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.console-modes {
   display: flex;
   flex-wrap: wrap;
+  align-items: end;
   gap: 0.5rem;
-  align-items: center;
 }
-.console-status[data-connected="true"] {
-  color: var(--ok-text);
+.console-modes > button {
+  min-height: 2.4rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
   font-weight: 700;
 }
+.console-modes > button[aria-pressed="true"] {
+  border-color: var(--brand);
+  background: var(--info-bg);
+  color: var(--info-text);
+}
+.console-modes .console-modes__primary {
+  border: 2px solid var(--governed);
+}
+.console-select {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.console-select select {
+  min-height: 2.4rem;
+  font-size: 0.85rem;
+}
+.console-outside {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.8rem;
+}
+.console-outside p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
 .console-notes {
-  max-height: calc(100vh - 7rem);
-  overflow: auto;
+  grid-area: notes;
+  position: sticky;
+  top: 5rem;
+  align-self: start;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+  padding: 1rem 1.2rem;
+}
+.console-notes h2 {
+  margin: 0.6rem 0 0;
+  font-size: 1.2rem;
+  line-height: 1.3;
+}
+.notes-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.surface-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.surface-badge[data-surface="app"] {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+  border-color: transparent;
+}
+.surface-badge[data-surface="observability"],
+.surface-badge[data-surface="azure"],
+.surface-badge[data-surface="foundry"] {
+  background: var(--info-bg);
+  color: var(--info-text);
+  border-color: transparent;
+}
+.talk-timer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.8rem 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface-2);
+  font-size: 0.85rem;
+}
+.talk-timer strong {
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+}
+.talk-timer span {
+  flex: 1;
+  color: var(--muted);
+}
+.notes-group h3 {
+  margin: 1rem 0 0.35rem;
+  color: var(--brand);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.notes-group ul,
+.notes-group ol {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.notes-keys {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.console-strip {
+  grid-area: strip;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.8rem;
+}
+.console-strip button {
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+.console-strip button span {
+  color: var(--muted);
+  font-weight: 800;
 }
 .console-strip button[aria-current="true"] {
   border-color: var(--brand);
-  font-weight: 700;
+  background: var(--info-bg);
+  color: var(--info-text);
+  font-weight: 800;
+}
+.console-links {
+  grid-area: links;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.2rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+@media (max-width: 1000px) {
+  .console {
+    grid-template-columns: 1fr;
+    grid-template-areas: "bar" "stage" "notes" "strip" "links";
+  }
+  .console-notes {
+    position: static;
+    max-height: none;
+  }
+  .console-previews {
+    grid-template-columns: 1fr;
+  }
+  .console-nav button {
+    min-width: 0;
+  }
 }
 .script-page section {
   break-inside: avoid;

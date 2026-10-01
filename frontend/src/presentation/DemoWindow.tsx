@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { loadTheme } from "../lib/preferences";
 import type { Deck } from "./deck";
 import FitStage from "./FitStage";
 import { readPresenter, type Presenter } from "./presenter-details";
@@ -18,6 +19,8 @@ type Props = {
   deck: Deck;
   renderSlide: (index: number, presenter: Presenter) => ReactNode;
   renderQr: (presenter: Presenter) => ReactNode;
+  /** Applies the console's theme to the whole site, so the framed live pages match too. */
+  onThemeChange?: (theme: "dark" | "light") => void;
 };
 function initialState(deck: Deck): ShowState {
   const id = decodeURIComponent(window.location.hash.slice(1));
@@ -26,7 +29,7 @@ function initialState(deck: Deck): ShowState {
     slide: found >= 0 ? found : 0,
     mode: { kind: "slide" },
     presenter: readPresenter(),
-    theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
+    theme: loadTheme(),
   };
 }
 function toggleFullscreen() {
@@ -34,7 +37,7 @@ function toggleFullscreen() {
   else void document.documentElement.requestFullscreen?.();
 }
 
-export default function DemoWindow({ deck, renderSlide, renderQr }: Props) {
+export default function DemoWindow({ deck, renderSlide, renderQr, onThemeChange }: Props) {
   const [state, setState] = useState<ShowState>(() => initialState(deck));
   const [lastConsole, setLastConsole] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -81,8 +84,11 @@ export default function DemoWindow({ deck, renderSlide, renderQr }: Props) {
   }, [sendHeartbeat]);
   useEffect(() => {
     document.title = `Demo Window · ${deck.slides[state.slide].chip}`;
+  }, [deck, state.slide]);
+  useEffect(() => {
     document.documentElement.dataset.theme = state.theme;
-  }, [deck, state]);
+    onThemeChange?.(state.theme);
+  }, [state.theme, onThemeChange]);
   useEffect(() => {
     post({ kind: "hello", source: "screen" });
     sendHeartbeat();

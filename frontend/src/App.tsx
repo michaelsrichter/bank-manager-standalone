@@ -10,6 +10,7 @@ import {
   loadTheme,
   saveConsent,
   saveTheme,
+  themeFromStorageEvent,
   type Consent,
   type Theme,
 } from "./lib/preferences";
@@ -33,6 +34,17 @@ export function App() {
     saveTheme(theme);
   }, [theme]);
 
+  // Keep every open page of this site on the same theme, including the live site
+  // framed inside the presentation's Demo Window.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      const next = themeFromStorageEvent(event);
+      if (next) setTheme(next);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   useEffect(() => {
     if (consent === "analytics") sendPageView(route.page);
   }, [consent, route.page]);
@@ -49,7 +61,7 @@ export function App() {
     return (
       <ErrorBoundary>
         <Suspense fallback={<Skeleton lines={8} label="Loading presentation" />}>
-          <PresentationApp />
+          <PresentationApp theme={theme} onThemeChange={setTheme} />
         </Suspense>
       </ErrorBoundary>
     );
@@ -66,7 +78,7 @@ export function App() {
         <main id="main" tabIndex={-1}>
           <ErrorBoundary>
             <Suspense fallback={<Skeleton lines={8} label="Loading presentation" />}>
-              <PresentationApp />
+              <PresentationApp theme={theme} onThemeChange={setTheme} />
             </Suspense>
           </ErrorBoundary>
         </main>

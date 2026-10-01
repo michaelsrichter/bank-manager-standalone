@@ -2,7 +2,13 @@ export type Consent = "analytics" | "necessary" | null;
 export type Theme = "light" | "dark";
 
 const CONSENT_KEY = "bm.consent.v1";
-const THEME_KEY = "bm.theme.v1";
+export const THEME_KEY = "bm.theme.v1";
+
+/** A theme saved by another tab or frame of this site, or null for any other storage change. */
+export function themeFromStorageEvent(event: StorageEvent): Theme | null {
+  if (event.key !== THEME_KEY) return null;
+  return event.newValue === "light" || event.newValue === "dark" ? event.newValue : null;
+}
 
 export function loadConsent(storage: Storage = localStorage): Consent {
   const value = storage.getItem(CONSENT_KEY);

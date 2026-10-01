@@ -34,9 +34,19 @@ The session is for architects and technical decision makers who are building mul
    - **D** shows the live site page for that slide.
    - **Q** shows QR codes.
    - **B** or period shows a black screen.
-   - Arrow keys move between slides.
+   - Arrow keys or **Space** move between slides. **T** starts or pauses the talk timer.
 
-The Demo Window can frame only same-site routes from a fixed allow-list: the live demo, Practice backup, health page, governance tour, and architecture diagrams. Azure portal pages cannot be framed, so open portal evidence in its own browser window.
+The console shows what the audience sees now, the next slide, the speaker notes (Say, Do,
+Point out, If it breaks), how many minutes the slide should take, and whether you are ahead
+or behind. A status pill shows whether the Demo Window is connected and in full screen. If you
+reload the console, it picks up where the running Demo Window is, without reloading the
+Demo Window (so the live chat is kept).
+
+**Light and dark theme.** The Demo Window always uses the console's theme. Switch the theme
+in the console header, and the slides and the live pages inside the Demo Window change too.
+Every open page of this site follows the same choice.
+
+The Demo Window can frame only same-site routes from a fixed allow-list: the live demo, Practice backup, health page, governance tour, and architecture diagrams. Azure portal pages cannot be framed. On the evidence slide, the console shows **Open Answer review workbook**, **Open Demo overview workbook**, and **Open Application Insights Logs** buttons. They open the portal in its own clean window, which you can then share.
 
 ## Presenter details and privacy
 

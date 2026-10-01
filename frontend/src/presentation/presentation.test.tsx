@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { publicDemoUrl } from "./constants";
 import { sessionDeck, totalMinutes } from "./deck";
 import DemoWindow from "./DemoWindow";
-import PresenterConsole from "./PresenterConsole";
+import PresenterConsole, { outsideLinksForSlide, surfaceLabels } from "./PresenterConsole";
 import {
   emptyPresenter,
   eventDateLabel,
@@ -222,22 +222,35 @@ describe("two-screen mode", () => {
 
   it("syncs console state to the Demo Window and keeps app frames mounted", async () => {
     vi.stubGlobal("BroadcastChannel", FakeBroadcastChannel);
-    render(
+    const onThemeChange = vi.fn();
+    const both = (theme: "dark" | "light") => (
       <>
         <PresenterConsole
           deck={sessionDeck}
           presenter={emptyPresenter}
-          theme="dark"
+          theme={theme}
           renderSlide={renderSlide}
           renderQr={renderQr}
+          observability={null}
         />
-        <DemoWindow deck={sessionDeck} renderSlide={renderSlide} renderQr={renderQr} />
-      </>,
+        <DemoWindow
+          deck={sessionDeck}
+          renderSlide={renderSlide}
+          renderQr={renderQr}
+          onThemeChange={onThemeChange}
+        />
+      </>
     );
+    const view = render(both("dark"));
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent("Demo Window connected"),
     );
-    await userEvent.click(screen.getByRole("button", { name: /6\. Meet demo/ }));
+    await waitFor(() => expect(onThemeChange).toHaveBeenLastCalledWith("dark"));
+    // The site theme follows the console, so the framed live pages match the slides.
+    view.rerender(both("light"));
+    await waitFor(() => expect(onThemeChange).toHaveBeenLastCalledWith("light"));
+    expect(document.documentElement.dataset.theme).toBe("light");
+    await userEvent.click(screen.getByRole("button", { name: /^6 Meet demo/ }));
     await userEvent.click(screen.getByRole("button", { name: /Show Live demo/ }));
     await waitFor(() => expect(screen.getByTitle("Live demo (live site)")).toBeInTheDocument());
     expect(screen.getByTitle("Live demo (live site)")).toHaveAttribute("src", "/#/demo");
@@ -245,6 +258,23 @@ describe("two-screen mode", () => {
     expect(screen.getByTitle("Live demo (live site)")).toHaveAttribute("hidden");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "PageDown" }));
     await waitFor(() => expect(window.location.hash).toBe("#live-role"));
+  });
+
+  it("offers portal links in their own window on the evidence slide", () => {
+    const evidence = sessionDeck.slides.find((slide) => slide.notes.surface === "observability")!;
+    const config = {
+      portalOrigin: "https://portal.azure.com",
+      tenantId: "00000000-0000-0000-0000-000000000001",
+      appInsightsResourceId:
+        "/subscriptions/00000000-0000-0000-0000-000000000002/resourceGroups/rg/providers/microsoft.insights/components/appi",
+      answerReviewWorkbookId:
+        "/subscriptions/00000000-0000-0000-0000-000000000002/resourceGroups/rg/providers/microsoft.insights/workbooks/00000000-0000-0000-0000-000000000003",
+    };
+    const labels = outsideLinksForSlide(evidence, config).map((link) => link.label);
+    expect(labels).toEqual(["Answer review workbook", "Application Insights Logs"]);
+    expect(outsideLinksForSlide(evidence, null)).toEqual([]);
+    expect(outsideLinksForSlide(sessionDeck.slides[0], config)).toEqual([]);
+    expect(surfaceLabels.observability).toBe("Azure Monitor");
   });
 
   it("reports blocked pop-ups", async () => {
@@ -257,6 +287,7 @@ describe("two-screen mode", () => {
         theme="dark"
         renderSlide={renderSlide}
         renderQr={renderQr}
+        observability={null}
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: "Open Demo Window" }));

@@ -1,4 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { getConfig } from "../lib/api";
+import {
+  answerReviewWorkbookUrl,
+  appInsightsLogsUrl,
+  overviewWorkbookUrl,
+} from "../lib/observability-links";
+import type { ObservabilityConfig } from "../lib/types";
 import {
   formatMinutes,
   paceLabel,
@@ -6,9 +13,11 @@ import {
   totalMinutes,
   type Deck,
   type Slide,
+  type Surface,
 } from "./deck";
 import FitStage from "./FitStage";
 import type { Presenter } from "./presenter-details";
+import { PresenterDetailsButton } from "./PresenterDetailsDialog";
 import { Rich } from "./rich-text";
 import {
   appScreenFor,
@@ -27,13 +36,26 @@ import {
 type Props = {
   deck: Deck;
   presenter: Presenter;
+  onSavePresenter?: (presenter: Presenter) => void;
   theme: "dark" | "light";
   renderSlide: (index: number, presenter: Presenter) => ReactNode;
   renderQr: (presenter: Presenter) => ReactNode;
+  /** Where portal links point. Loaded from /api/config when not given. */
+  observability?: ObservabilityConfig | null;
 };
 type ScreenInfo = { at: number; slide: number; mode: ScreenMode; fullscreen: boolean };
 type ScreenArea = { availLeft: number; availTop: number; availWidth: number; availHeight: number };
 type ScreenDetails = { screens: ScreenArea[]; currentScreen: ScreenArea };
+type OutsideLink = { href: string; label: string };
+
+export const surfaceLabels: Record<Surface, string> = {
+  slides: "Slides",
+  app: "Live site",
+  azure: "Azure portal",
+  foundry: "Foundry portal",
+  observability: "Azure Monitor",
+};
+
 export function appScreenForSlide(slide: Slide): AppScreen | null {
   for (const block of slide.blocks)
     if (block.kind === "launch")
@@ -43,11 +65,47 @@ export function appScreenForSlide(slide: Slide): AppScreen | null {
       }
   return slide.notes.surface === "app" ? appScreens[0] : null;
 }
+
+function safeUrl(build: () => string | null): string | null {
+  try {
+    return build();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pages that cannot appear inside the Demo Window (portals and outside references).
+ * They open in their own clean window instead.
+ */
+export function outsideLinksForSlide(
+  slide: Slide,
+  observability?: ObservabilityConfig | null,
+): OutsideLink[] {
+  const links = new Map<string, string>();
+  for (const block of slide.blocks)
+    if (block.kind === "launch")
+      for (const link of block.links)
+        if (/^https:\/\//.test(link.href)) links.set(link.href, link.label);
+  if (slide.notes.surface === "observability" && observability) {
+    const portal: [string, string | null][] = [
+      ["Answer review workbook", safeUrl(() => answerReviewWorkbookUrl(observability))],
+      ["Demo overview workbook", safeUrl(() => overviewWorkbookUrl(observability))],
+      ["Application Insights Logs", safeUrl(() => appInsightsLogsUrl(observability))],
+    ];
+    for (const [label, href] of portal) if (href) links.set(href, label);
+  }
+  return [...links].map(([href, label]) => ({ href, label }));
+}
+
 function modeLabel(mode: ScreenMode) {
   if (mode.kind === "slide") return "Slide";
   if (mode.kind === "qr") return "QR code";
   if (mode.kind === "black") return "Paused (black screen)";
   return appScreenFor(mode.path)?.label ?? "Live site";
+}
+function formatClock(seconds: number) {
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 function isTypingTarget(target: EventTarget | null) {
   return (
@@ -56,12 +114,44 @@ function isTypingTarget(target: EventTarget | null) {
   );
 }
 
-export default function PresenterConsole({ deck, presenter, theme, renderSlide, renderQr }: Props) {
+function NotesGroup({
+  title,
+  items,
+  ordered = false,
+}: {
+  title: string;
+  items: string[];
+  ordered?: boolean;
+}) {
+  const List = ordered ? "ol" : "ul";
+  return (
+    <section className="notes-group">
+      <h3>{title}</h3>
+      <List>
+        {items.map((item) => (
+          <li key={item}>
+            <Rich text={item} />
+          </li>
+        ))}
+      </List>
+    </section>
+  );
+}
+
+export default function PresenterConsole({
+  deck,
+  presenter,
+  onSavePresenter,
+  theme,
+  renderSlide,
+  renderQr,
+  observability,
+}: Props) {
   const initial = Math.max(
     0,
     deck.slides.findIndex((item) => item.id === decodeURIComponent(window.location.hash.slice(1))),
   );
-  const [slide, setSlide] = useState(initial >= 0 ? initial : 0);
+  const [slide, setSlide] = useState(initial);
   const [mode, setMode] = useState<ScreenMode>({ kind: "slide" });
   const [screenInfo, setScreenInfo] = useState<ScreenInfo | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -69,6 +159,8 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(false);
   const [ready, setReady] = useState(false);
+  const [loadedLinks, setLoadedLinks] = useState<ObservabilityConfig | null>(null);
+  const portalConfig = observability === undefined ? loadedLinks : observability;
   const touched = useRef(false);
   const readyRef = useRef(false);
   useEffect(() => {
@@ -79,12 +171,31 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
   const current = deck.slides[slide];
   const next = deck.slides[slide + 1];
   const suggestedApp = appScreenForSlide(current);
+  const outsideLinks = outsideLinksForSlide(current, portalConfig);
   const connected = screenInfo !== null && now - screenInfo.at < staleAfterMs;
   const canPlaceOnScreen = "getScreenDetails" in window;
   const stateRef = useRef<ShowState>({ slide, mode, presenter, theme });
   useEffect(() => {
     stateRef.current = { slide, mode, presenter, theme };
   });
+
+  useEffect(() => {
+    if (observability !== undefined) return;
+    let active = true;
+    getConfig()
+      .then((config) => {
+        if (active) setLoadedLinks(config.observability ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [observability]);
+
+  useEffect(() => {
+    document.title = `Presenter console · ${deck.title} | Governed AI Bank Assistant`;
+  }, [deck.title]);
+
   const apply = useCallback((nextState: Pick<ShowState, "slide" | "mode">) => {
     touched.current = true;
     setReady(true);
@@ -106,6 +217,8 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
         });
         setNow(Date.now());
         if (!touched.current) {
+          // A Demo Window is already running (for example, after this page reloaded).
+          // Continue from where it is.
           touched.current = true;
           setSlide(message.slide);
           setMode(message.mode);
@@ -179,6 +292,7 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
       }
       const existing = demoWindow.current && !demoWindow.current.closed ? demoWindow.current : null;
       if (existing) {
+        // Never reload a running Demo Window: that would lose the live demo's chat.
         if (onOtherScreen) {
           existing.moveTo(area.availLeft, area.availTop);
           existing.resizeTo(area.availWidth, area.availHeight);
@@ -187,6 +301,7 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
         return;
       }
       const features = `popup=yes,left=${area.availLeft},top=${area.availTop},width=${area.availWidth},height=${area.availHeight}`;
+      // After this page reloads, an empty URL finds the running window by name without reloading it.
       const opened = window.open(connected ? "" : url, `demo-window-${deck.id}`, features);
       if (!opened) {
         setNotice(
@@ -205,6 +320,9 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
     },
     [canPlaceOnScreen, connected, deck],
   );
+  const openOutside = (href: string) => {
+    window.open(href, "bank-portal-window", "popup=yes,width=1280,height=800,noopener");
+  };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (
@@ -215,6 +333,8 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
         isTypingTarget(event.target)
       )
         return;
+      const onControl =
+        event.target instanceof HTMLElement && Boolean(event.target.closest("a, button"));
       const at = stateRef.current;
       switch (event.key) {
         case "ArrowRight":
@@ -226,6 +346,11 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
         case "PageUp":
           event.preventDefault();
           goTo(at.slide - 1);
+          break;
+        case " ":
+          if (onControl) return;
+          event.preventDefault();
+          goTo(event.shiftKey ? at.slide - 1 : at.slide + 1);
           break;
         case "Home":
           event.preventDefault();
@@ -263,42 +388,91 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [deck, goTo, show]);
+
+  const plannedStart = starts[slide] ?? 0;
   return (
     <div className="console">
       <header className="console-bar">
-        <h1>{deck.title}</h1>
-        <span className="console-status" data-connected={connected} role="status">
-          {connected
-            ? `Demo Window connected${screenInfo?.fullscreen ? " · full screen" : ""}`
-            : "Demo Window not open"}
-        </span>
-        <button type="button" onClick={() => void openDemoWindow(false)}>
-          {connected ? "Bring Demo Window forward" : "Open Demo Window"}
-        </button>
-        {canPlaceOnScreen && (
-          <button type="button" onClick={() => void openDemoWindow(true)}>
-            Open on other screen
+        <div className="console-bar__title">
+          <p className="eyebrow">Presenter console · {deck.lengthLabel} talk</p>
+          <h1>{deck.title}</h1>
+        </div>
+        <div className="console-bar__window" role="group" aria-label="Demo Window">
+          <span className="console-status" data-connected={connected} role="status">
+            {connected
+              ? `Demo Window connected${screenInfo?.fullscreen ? " · full screen" : ""}`
+              : "Demo Window not open"}
+          </span>
+          <button type="button" className="primary" onClick={() => void openDemoWindow(false)}>
+            {connected ? "Bring Demo Window forward" : "Open Demo Window"}
           </button>
-        )}
-        {!isSupported() && <p>This browser cannot link two windows. Use a current browser.</p>}
-        {notice && <p role="alert">{notice}</p>}
-      </header>
-      <section className="console-stage" aria-label="On the Demo Window">
-        <div className="console-preview" aria-hidden="true">
-          {mode.kind === "slide" && <FitStage>{renderSlide(slide, presenter)}</FitStage>}
-          {mode.kind === "qr" && <FitStage>{renderQr(presenter)}</FitStage>}
-          {mode.kind === "black" && <p>Black screen. The audience sees nothing.</p>}
-          {mode.kind === "app" && (
-            <p>{modeLabel(mode)}: use the live site inside the Demo Window.</p>
+          {canPlaceOnScreen && (
+            <button type="button" onClick={() => void openDemoWindow(true)}>
+              Open on other screen
+            </button>
+          )}
+          {onSavePresenter && (
+            <PresenterDetailsButton presenter={presenter} onSave={onSavePresenter} />
           )}
         </div>
-        {next && (
-          <div className="console-next" aria-hidden="true">
-            <FitStage>{renderSlide(slide + 1, presenter)}</FitStage>
-          </div>
+        {!isSupported() && (
+          <p className="console-alert">
+            This browser cannot link two windows. Use a current version of Edge, Chrome, Firefox, or
+            Safari.
+          </p>
         )}
-        <nav aria-label="Slide controls">
-          <button type="button" onClick={() => goTo(slide - 1)} disabled={slide === 0}>
+        {notice && (
+          <p className="console-alert" role="alert">
+            {notice}
+          </p>
+        )}
+      </header>
+
+      <section className="console-stage" aria-labelledby="console-now">
+        <div className="console-stage__heading">
+          <h2 id="console-now">On the Demo Window</h2>
+          <span className="surface-badge" data-surface={mode.kind === "app" ? "app" : "slides"}>
+            {modeLabel(mode)}
+          </span>
+        </div>
+        <div className="console-previews">
+          <div className="console-preview" aria-hidden="true">
+            {mode.kind === "slide" && <FitStage>{renderSlide(slide, presenter)}</FitStage>}
+            {mode.kind === "qr" && <FitStage>{renderQr(presenter)}</FitStage>}
+            {mode.kind === "black" && (
+              <div className="console-preview__note">Black screen. The audience sees nothing.</div>
+            )}
+            {mode.kind === "app" && (
+              <div className="console-preview__note">
+                <strong>{modeLabel(mode)}</strong>
+                <span>{mode.path}</span>
+                <span>
+                  Use the live site inside the Demo Window. Your clicks and typing there are what
+                  the audience sees.
+                </span>
+              </div>
+            )}
+          </div>
+          {next && (
+            <div className="console-next">
+              <p className="eyebrow">Next slide · {surfaceLabels[next.notes.surface]}</p>
+              <div className="console-next__preview" aria-hidden="true">
+                <FitStage>{renderSlide(slide + 1, presenter)}</FitStage>
+              </div>
+              <p>
+                <strong>{next.title}</strong>
+              </p>
+            </div>
+          )}
+        </div>
+
+        <nav className="console-nav" aria-label="Slide controls">
+          <button
+            type="button"
+            onClick={() => goTo(slide - 1)}
+            disabled={slide === 0}
+            aria-label="Previous slide"
+          >
             ← Prev
           </button>
           <span aria-live="polite">
@@ -306,13 +480,16 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
           </span>
           <button
             type="button"
+            className="console-nav__next"
             onClick={() => goTo(slide + 1)}
             disabled={slide === deck.slides.length - 1}
+            aria-label="Next slide"
           >
             Next →
           </button>
         </nav>
-        <div role="group" aria-label="What the Demo Window shows">
+
+        <div className="console-modes" role="group" aria-label="What the Demo Window shows">
           <button
             type="button"
             aria-pressed={mode.kind === "slide"}
@@ -323,6 +500,7 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
           {suggestedApp && (
             <button
               type="button"
+              className="console-modes__primary"
               aria-pressed={mode.kind === "app" && mode.path === suggestedApp.path}
               onClick={() => show({ kind: "app", path: suggestedApp.path })}
             >
@@ -343,8 +521,8 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
           >
             Black screen (B)
           </button>
-          <label>
-            Show a site page
+          <label className="console-select">
+            <span>Show a site page</span>
             <select
               value={mode.kind === "app" ? mode.path : ""}
               onChange={(event) => {
@@ -368,17 +546,36 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
             </button>
           )}
         </div>
+
+        {outsideLinks.length > 0 && (
+          <div className="console-outside">
+            <p>
+              Portals cannot appear inside the Demo Window. Open them in their own clean window,
+              then share that window or your screen. You need Azure access to open them.
+            </p>
+            <div className="button-row">
+              {outsideLinks.map((link) => (
+                <button key={link.href} type="button" onClick={() => openOutside(link.href)}>
+                  Open {link.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
+
       <aside className="console-notes" aria-label="Speaker notes">
-        <p>
-          Plan: {formatMinutes(current.notes.minutes)} (from {formatMinutes(starts[slide] ?? 0)} of{" "}
-          {formatMinutes(totalMinutes(deck))})
-        </p>
-        <div role="group" aria-label="Talk timer">
-          <strong>
-            {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
-            {String(elapsed % 60).padStart(2, "0")}
-          </strong>
+        <div className="notes-meta">
+          <span className="surface-badge" data-surface={current.notes.surface}>
+            Screen: {surfaceLabels[current.notes.surface]}
+          </span>
+          <span>
+            Plan: {formatMinutes(current.notes.minutes)} (from {formatMinutes(plannedStart)} of{" "}
+            {formatMinutes(totalMinutes(deck))})
+          </span>
+        </div>
+        <div className="talk-timer" role="group" aria-label="Talk timer">
+          <strong>{formatClock(elapsed)}</strong>
           <span>{paceLabel(deck, slide, elapsed)}</span>
           <button type="button" onClick={() => setRunning((value) => !value)}>
             {running ? "Pause" : "Start"}
@@ -394,51 +591,18 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
           </button>
         </div>
         <h2>{current.title}</h2>
-        <h3>Say</h3>
-        <ul>
-          {current.notes.say.map((item) => (
-            <li key={item}>
-              <Rich text={item} />
-            </li>
-          ))}
-        </ul>
-        {current.notes.do && (
-          <>
-            <h3>Do</h3>
-            <ol>
-              {current.notes.do.map((item) => (
-                <li key={item}>
-                  <Rich text={item} />
-                </li>
-              ))}
-            </ol>
-          </>
-        )}
-        {current.notes.watch && (
-          <>
-            <h3>Point out</h3>
-            <ul>
-              {current.notes.watch.map((item) => (
-                <li key={item}>
-                  <Rich text={item} />
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+        <NotesGroup title="Say" items={current.notes.say} />
+        {current.notes.do && <NotesGroup title="Do" items={current.notes.do} ordered />}
+        {current.notes.watch && <NotesGroup title="Point out" items={current.notes.watch} />}
         {current.notes.fallback && (
-          <>
-            <h3>If it breaks</h3>
-            <ul>
-              {current.notes.fallback.map((item) => (
-                <li key={item}>
-                  <Rich text={item} />
-                </li>
-              ))}
-            </ul>
-          </>
+          <NotesGroup title="If it breaks" items={current.notes.fallback} />
         )}
+        <p className="notes-keys">
+          Keys: → or Space next · ← back · S slide · D live site · Q QR code · B black screen · T
+          timer. A clicker pointed at the Demo Window also works.
+        </p>
       </aside>
+
       <nav className="console-strip" aria-label="All slides">
         {deck.slides.map((item, index) => (
           <button
@@ -447,10 +611,16 @@ export default function PresenterConsole({ deck, presenter, theme, renderSlide, 
             aria-current={index === slide ? "true" : undefined}
             onClick={() => goTo(index)}
           >
-            {index + 1}. {item.chip}
+            <span>{index + 1}</span> {item.chip}
           </button>
         ))}
       </nav>
+
+      <p className="console-links">
+        <a href={`/presentation/${deck.id}`}>Slides in this window</a>
+        <a href={`/presentation/${deck.id}/script`}>Presenter script</a>
+        <a href="/presentation">All talks</a>
+      </p>
     </div>
   );
 }

@@ -26,6 +26,13 @@ describe("App shell", () => {
     const before = document.documentElement.dataset.theme;
     await user.click(toggle);
     expect(document.documentElement.dataset.theme).not.toBe(before);
+
+    // Another page of this site (for example, the presenter console) changed the theme.
+    const other = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    window.dispatchEvent(new StorageEvent("storage", { key: "bm.theme.v1", newValue: other }));
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe(other));
+    window.dispatchEvent(new StorageEvent("storage", { key: "unrelated", newValue: "dark" }));
+    expect(document.documentElement.dataset.theme).toBe(other);
     vi.unstubAllGlobals();
   });
 

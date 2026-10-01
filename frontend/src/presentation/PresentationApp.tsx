@@ -15,9 +15,6 @@ function pathParts() {
     .split("/")
     .filter(Boolean);
 }
-function theme() {
-  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
-}
 
 function TalksPage({
   presenter,
@@ -79,7 +76,15 @@ function NotFound() {
   );
 }
 
-export default function PresentationApp() {
+type AppProps = {
+  /** The site theme. The console sends it to the Demo Window so both screens match. */
+  theme?: "dark" | "light";
+  onThemeChange?: (theme: "dark" | "light") => void;
+};
+
+export default function PresentationApp({ theme, onThemeChange }: AppProps = {}) {
+  const siteTheme =
+    theme ?? (document.documentElement.dataset.theme === "light" ? "light" : "dark");
   const [presenter, savePresenter] = usePresenter();
   const [deckId, route] = pathParts();
   if (!deckId) return <TalksPage presenter={presenter} onSavePresenter={savePresenter} />;
@@ -108,12 +113,20 @@ export default function PresentationApp() {
       <PresenterConsole
         deck={deck}
         presenter={presenter}
-        theme={theme()}
+        onSavePresenter={savePresenter}
+        theme={siteTheme}
         renderSlide={renderSlide}
         renderQr={renderQr}
       />
     );
   if (route === "demo-window")
-    return <DemoWindow deck={deck} renderSlide={renderSlide} renderQr={renderQr} />;
+    return (
+      <DemoWindow
+        deck={deck}
+        renderSlide={renderSlide}
+        renderQr={renderQr}
+        onThemeChange={onThemeChange}
+      />
+    );
   return <SlidesPage deck={deck} presenter={presenter} onSavePresenter={savePresenter} />;
 }
