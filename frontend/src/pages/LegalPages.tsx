@@ -9,8 +9,11 @@ export function PrivacyPage() {
         </li>
         <li>
           <strong>Stored only in your browser:</strong> a random nickname (like “Calm Otter 4821”),
-          a random ID, your theme, your cookie choice, and up to 10 demo chats. Use{" "}
-          <em>Reset demo</em> or <em>Reset profile</em> on the demo page to delete them.
+          a random ID, your theme, your cookie choice, up to 10 demo chats, and any presenter
+          details you type for the slides. Presenter details stay on this device and are never sent
+          to the demo services. Use <em>Reset demo</em> or <em>Reset profile</em> on the demo page
+          to delete demo data, and <em>Remove my details</em> in the slides to delete presenter
+          details.
         </li>
         <li>
           <strong>Sent to the server:</strong> the request you type, the persona and settings you
