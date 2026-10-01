@@ -27,6 +27,9 @@ Every event also carries the request context below, when there is one.
 
 ## Request context on every span and event
 
+A **span** is one timed step, such as "call the AI model" or "run the policy check". An
+**attribute** is a name and value attached to a span or event.
+
 | Attribute | Example | Meaning |
 |---|---|---|
 | `gen_ai.conversation.id` | `3f2c7b1e-…` | The chat. The browser makes a random ID for each chat and sends it in the `X-Conversation-Id` header. It is not tied to a person, and **New chat** makes a new one. |

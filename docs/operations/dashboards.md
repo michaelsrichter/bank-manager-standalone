@@ -6,6 +6,18 @@ The demo reports what it does to Azure Monitor. These pages show that data. None
 them are public: you need Azure access to the demo's resource group to open them.
 They never show what anyone typed or what the AI answered.
 
+## Words used on this page
+
+- **Azure Monitor**: Azure's service for collecting and viewing logs, metrics, and
+  traces. **Application Insights** and **Log Analytics** are the parts of it this demo uses.
+- **Trace ID**: a 32-character ID shared by every step of one answer, for example
+  `4bf92f3577b34da6a3ce929d0e0e4736`. Application Insights calls it the operation ID.
+- **Conversation ID**: an ID shared by every answer in one chat. The browser makes a new
+  random one when you start a **New chat**.
+- **Workbook**: an Azure Monitor page of charts and tables, saved as a file in this repo.
+- **Query** (KQL, Kusto Query Language): the text you paste into **Logs** to search the data.
+- **Role**: a permission in Azure, such as Reader, that someone gives you on a resource group.
+
 | Dashboard | Question it answers | How to open | Role needed |
 |---|---|---|---|
 | **IDs and observability links** panel (in the app, under each answer) | "Where is *this* answer in Azure Monitor?" | Open the panel under an answer in the demo | Anyone can see the IDs. The links need the roles below |

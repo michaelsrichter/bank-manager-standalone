@@ -62,6 +62,7 @@ def mode() -> DemoMode:
     return _mode.get()
 
 
+# tour:begin conversation-stamp
 def begin_request(path: str, conversation: str | None, demo_mode: str | None) -> None:
     """Remember this request's IDs, and stamp them on the request span already running."""
     _conversation_id.set(clean_conversation_id(conversation))
@@ -78,6 +79,9 @@ def stamp(span: trace.Span) -> None:
     if (journey := _journey.get()) is not None:
         span.set_attribute(JOURNEY_ATTRIBUTE, journey)
         span.set_attribute(MODE_ATTRIBUTE, _mode.get())
+
+
+# tour:end conversation-stamp
 
 
 def log_context() -> dict[str, str]:

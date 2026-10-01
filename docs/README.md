@@ -33,6 +33,7 @@ need rules enforced by software, not just good prompts.
 | [presentation/README.md](presentation/README.md) | Talk slides, presenter script, two-screen mode, and QR codes |
 | [operations/deploy.md](operations/deploy.md) | Deploy with `azd up` |
 | [operations/custom-domain.md](operations/custom-domain.md) | Custom domain + free managed certificate |
+| [operations/dashboards.md](operations/dashboards.md) | Every dashboard, the question it answers, the role needed; review one answer or one chat |
 | [operations/rollback.md](operations/rollback.md) | Undo a bad release |
 | [operations/troubleshooting.md](operations/troubleshooting.md) | Common problems and fixes |
 | [operations/local-dev.md](operations/local-dev.md) | Run locally, with or without a real model |
@@ -57,7 +58,9 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | Private Link to Azure dependencies | ⚠️ | Foundry is private-endpoint only. ACR and Azure Monitor ingestion stay public (MI-authenticated) — [ADR 0011](adr/0011-private-link-scope.md) |
 | Config-driven models | ✅ | [`config/models.json`](../config/models.json) drives the app **and** the Bicep deployments |
 | Content filters on | ✅ | `Microsoft.DefaultV2` on every deployment — [content filtering](security/content-filtering.md) |
-| Model + cost visible in UI | ✅ | Requested deployment, actual response model, 4 token categories, estimated cost, trace ID |
+| Model + cost visible in UI | ✅ | Requested deployment, actual response model, 4 token categories, estimated cost |
+| IDs and observability links per answer | ✅ | Closed-by-default panel: trace ID, conversation ID, model, time, Copy buttons, links to Logs and the Answer review workbook, ready-to-paste queries — [dashboards](operations/dashboards.md) |
+| Practice mode | ✅ | `#/demo?mode=practice` answers from recorded intents, clearly labeled, no model call — [ADR 0012](adr/0012-practice-mode-and-same-site-framing.md) |
 | Alias + GUID, no PII | ✅ | [auth](security/auth.md), [privacy](security/privacy.md) |
 | “Demo only” indicator, no partner names | ✅ | Header badge above the fold + footer |
 | Standard footer | ⚠️ | Privacy, Terms, How built, GitHub, Microsoft products, colophon. Author LinkedIn links omitted at the owner’s request; authors credited by name (Mike Richter and Thomas Mathew, Microsoft) |
@@ -68,7 +71,8 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | CI coverage gates (BE ≥ 70% / FE ≥ 60%) | ✅ | `.github/workflows/ci.yml`, `FAKE_AI=1` |
 | Budget alerts in Bicep | ✅ | USD 50/month, 80% actual + 100% forecast |
 | Actionable service alerts | ✅ | Sustained 5xx only (> 5 in 15 min) |
-| OpenTelemetry end to end + dashboards | ✅ | Browser traceparent → FastAPI → GenAI agent spans → ACS metrics → Foundry diagnostics; Azure Workbook + portal dashboard — [observability](telemetry/observability.md) |
+| OpenTelemetry end to end + dashboards | ✅ | Browser traceparent → FastAPI → GenAI agent spans → ACS metrics → Foundry diagnostics; every span carries `gen_ai.conversation.id`, `service.version`, `demo.mode`, and `demo.authz.outcome`. Overview workbook with the 7 required sections, Answer review workbook, portal dashboard, daily-cap alert — [observability](telemetry/observability.md) |
+| Plain-language public site and docs | ✅ | UI text, dashboards, and docs written for a smart reader who may not know the terms ([`eps-demo-plain-language`](../.github/skills/eps-demo-plain-language/SKILL.md)); new pages define their terms on first use |
 | Health page + endpoint | ✅ | Expected-denial and no-inference probes — [health](health/README.md) |
 | VS Code Run All / Debug All, devcontainer | ✅ | `.vscode/`, `.devcontainer/` |
 | Uniform CLI `dev` / `test` / `lint` / `deploy` | ✅ | [`Makefile`](../Makefile) |
@@ -93,3 +97,4 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | [0009](adr/0009-direct-structured-output-no-agent-framework.md) | Direct structured output instead of Agent Framework | accepted |
 | [0010](adr/0010-acs-policy-engine.md) | Agent Control Specification (ACS) + OPA as the policy engine | accepted |
 | [0011](adr/0011-private-link-scope.md) | Private Link for Foundry; ACR and Monitor public with MI | accepted |
+| [0012](adr/0012-practice-mode-and-same-site-framing.md) | Practice mode and same-site framing | accepted |
