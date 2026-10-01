@@ -59,6 +59,11 @@ resource budget 'Microsoft.Consumption/budgets@2023-05-01' = {
 }
 
 // ------------------------------------------------------------ Observability
+// Workbook names are deterministic GUIDs (see modules/observability.bicep), so the
+// container app can link to them without a module dependency cycle.
+var overviewWorkbookId = resourceId('Microsoft.Insights/workbooks', guid(resourceGroup().id, 'bank-manager-telemetry-workbook'))
+var answerReviewWorkbookId = resourceId('Microsoft.Insights/workbooks', guid(resourceGroup().id, 'bank-manager-answer-review-workbook'))
+
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: 'log-${token}'
   location: location
@@ -391,6 +396,13 @@ resource web 'Microsoft.App/containerApps@2025-01-01' = {
             }
             // Never export prompt/response content in GenAI telemetry.
             { name: 'OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT', value: 'false' }
+            { name: 'DEPLOYMENT_ENVIRONMENT', value: 'demo' }
+            // Public resource IDs (not secrets) for the "IDs and observability links" panel.
+            { name: 'PORTAL_ORIGIN', value: environment().portal }
+            { name: 'PORTAL_TENANT_ID', value: tenant().tenantId }
+            { name: 'APPINSIGHTS_RESOURCE_ID', value: appInsights.id }
+            { name: 'ANSWER_REVIEW_WORKBOOK_ID', value: answerReviewWorkbookId }
+            { name: 'OVERVIEW_WORKBOOK_ID', value: overviewWorkbookId }
           ]
           probes: [
             {
@@ -512,4 +524,7 @@ output customDomainUrl string = empty(customDomainName) ? '' : 'https://${custom
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
 output logAnalyticsWorkspaceId string = logAnalytics.id
 output workbookUrl string = observability.outputs.workbookUrl
+output answerReviewWorkbookId string = observability.outputs.answerReviewWorkbookId
+output answerReviewWorkbookUrl string = observability.outputs.answerReviewWorkbookUrl
+output appInsightsResourceId string = appInsights.id
 output dashboardUrl string = observability.outputs.dashboardUrl

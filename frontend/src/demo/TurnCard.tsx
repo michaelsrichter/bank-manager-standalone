@@ -1,7 +1,8 @@
 import { Skeleton, StatusBadge } from "../components/Skeleton";
 import { t } from "../i18n";
 import { formatUsd } from "../lib/format";
-import type { LaneResult, ToolAction } from "../lib/types";
+import type { LaneResult, ObservabilityConfig, ToolAction } from "../lib/types";
+import { ReviewIds } from "./ReviewIds";
 import type { Turn } from "./state";
 
 const STEP_ORDER = ["route", "baseline", "governed.input", "governed.pre_tool", "governed.tool"];
@@ -125,14 +126,6 @@ function ModelEvidence({ turn }: { turn: Turn }) {
             ? s.fakeCost
             : `${formatUsd(turn.cost?.totalUsd)} (${turn.cost?.confidence ?? "unavailable"})`}
         </dd>
-        {turn.traceId && (
-          <>
-            <dt>{s.traceId}</dt>
-            <dd>
-              <code>{turn.traceId}</code>
-            </dd>
-          </>
-        )}
       </dl>
     </details>
   );
@@ -142,9 +135,10 @@ interface Props {
   turn: Turn;
   index: number;
   onDecision: (turn: Turn, decision: "approve" | "reject") => void;
+  observability?: ObservabilityConfig | null;
 }
 
-export function TurnCard({ turn, index, onDecision }: Props) {
+export function TurnCard({ turn, index, onDecision, observability }: Props) {
   const s = t().demo;
   const streaming = turn.status === "streaming";
   return (
@@ -192,6 +186,7 @@ export function TurnCard({ turn, index, onDecision }: Props) {
         </div>
       )}
       <ModelEvidence turn={turn} />
+      {turn.status !== "streaming" && <ReviewIds turn={turn} config={observability} />}
     </article>
   );
 }

@@ -425,7 +425,13 @@ export function DemoPage({
           <div className="turns">
             {thread.turns
               .map((turn, index) => (
-                <TurnCard key={turn.id} turn={turn} index={index} onDecision={decide} />
+                <TurnCard
+                  key={turn.id}
+                  turn={turn}
+                  index={index}
+                  onDecision={decide}
+                  observability={config?.observability}
+                />
               ))
               .reverse()}
           </div>

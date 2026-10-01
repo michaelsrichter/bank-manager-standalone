@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Answer review\nUse this page to review **one answer** or **one whole chat**.\n\n1. In the demo, open **IDs and observability links** under an answer.\n2. Copy the **Trace ID** (one answer) or the **Conversation ID** (the whole chat), and paste it below. Or select a row in **Recent answers**.\n\nA trace ID is the W3C trace ID. Application Insights stores it as the operation ID (`operation_Id`). Telemetry never holds the question, the answer, or file text.\n\nThis page is defined in `infra/dashboards/answer-review.workbook.json`. Change that file, not only the portal. See the `eps-demo-telemetry-links` skill."
+        "json": "# Answer review\nUse this page to review **one answer** or **one whole chat** in the Bank Manager governance demo.\n\n1. In the demo, open **IDs and observability links** under an answer.\n2. Copy the **Trace ID** (one answer) or the **Conversation ID** (the whole chat), and paste it below. Or select a row in **Recent answers**.\n\nA trace ID is the W3C trace ID. Application Insights stores it as the operation ID (`operation_Id`). Telemetry never holds the question, the answer, or account data. **Decision** shows what the policy did: `allowed`, `approval_required`, `denied_expected` (the rules blocked something they should block) or `denied_unexpected` (something broke, so look into it). `not_checked` is the no-rules lane, shown for comparison.\n\nThis page is defined in `infra/dashboards/answer-review.workbook.json`. Change that file, not only the portal. See the `eps-demo-telemetry-links` skill."
       },
       "name": "intro"
     },
@@ -20,14 +20,26 @@
             "label": "Time range",
             "type": 4,
             "isRequired": true,
-            "value": { "durationMs": 86400000 },
+            "value": {
+              "durationMs": 86400000
+            },
             "typeSettings": {
               "selectableValues": [
-                { "durationMs": 3600000 },
-                { "durationMs": 14400000 },
-                { "durationMs": 86400000 },
-                { "durationMs": 604800000 },
-                { "durationMs": 2592000000 }
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 2592000000
+                }
               ],
               "allowCustom": true
             }
@@ -39,7 +51,9 @@
             "label": "Trace ID (one answer)",
             "type": 1,
             "value": "",
-            "timeContext": { "durationMs": 86400000 }
+            "timeContext": {
+              "durationMs": 86400000
+            }
           },
           {
             "id": "conversation-id",
@@ -48,7 +62,9 @@
             "label": "Conversation ID (whole chat)",
             "type": 1,
             "value": "",
-            "timeContext": { "durationMs": 86400000 }
+            "timeContext": {
+              "durationMs": 86400000
+            }
           }
         ],
         "style": "pills",
@@ -68,17 +84,21 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "requests\n| where isnotempty(tostring(customDimensions[\"gen_ai.conversation.id\"]))\n| summarize Started = min(timestamp), [\"Seconds\"] = round(max(duration) / 1000, 1), [\"Failed steps\"] = countif(success == false), Conversation = take_any(tostring(customDimensions[\"gen_ai.conversation.id\"])), Agent = take_any(coalesce(tostring(customDimensions[\"gen_ai.agent.name\"]), cloud_RoleName)) by TraceId = operation_Id\n| top 50 by Started desc",
+        "query": "requests\n| where isnotempty(tostring(customDimensions[\"gen_ai.conversation.id\"]))\n| where name has \"compare\"\n| summarize Started = min(timestamp), [\"Seconds\"] = round(max(duration) / 1000, 1), [\"Failed steps\"] = countif(success == false), Conversation = take_any(tostring(customDimensions[\"gen_ai.conversation.id\"])), Mode = take_any(tostring(customDimensions[\"demo.mode\"])), Version = take_any(application_Version) by TraceId = operation_Id\n| top 50 by Started desc",
         "size": 0,
         "title": "Recent answers (select a row)",
-        "noDataMessage": "No answers yet. Answers appear here when the app records gen_ai.conversation.id on its spans.",
+        "noDataMessage": "No answers yet. Ask a question in the demo, then refresh.",
         "timeContextFromParameter": "TimeRange",
-        "timeContext": { "durationMs": 86400000 },
+        "timeContext": {
+          "durationMs": 86400000
+        },
         "exportFieldName": "TraceId",
         "exportParameterName": "TraceId",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "crossComponentResources": ["__APP_INSIGHTS_ID__"],
+        "crossComponentResources": [
+          "__APP_INSIGHTS_ID__"
+        ],
         "visualization": "table"
       },
       "name": "recent-answers"
@@ -88,7 +108,11 @@
       "content": {
         "json": "## One answer\nWhere the time went, every step in order, and anything that failed."
       },
-      "conditionalVisibility": { "parameterName": "TraceId", "comparison": "isNotEqualTo", "value": "" },
+      "conditionalVisibility": {
+        "parameterName": "TraceId",
+        "comparison": "isNotEqualTo",
+        "value": ""
+      },
       "name": "h-answer"
     },
     {
@@ -100,13 +124,21 @@
         "title": "Where the time went (seconds per step)",
         "noDataMessage": "No steps found for this trace ID in the selected time range.",
         "timeContextFromParameter": "TimeRange",
-        "timeContext": { "durationMs": 86400000 },
+        "timeContext": {
+          "durationMs": 86400000
+        },
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "crossComponentResources": ["__APP_INSIGHTS_ID__"],
+        "crossComponentResources": [
+          "__APP_INSIGHTS_ID__"
+        ],
         "visualization": "barchart"
       },
-      "conditionalVisibility": { "parameterName": "TraceId", "comparison": "isNotEqualTo", "value": "" },
+      "conditionalVisibility": {
+        "parameterName": "TraceId",
+        "comparison": "isNotEqualTo",
+        "value": ""
+      },
       "customWidth": "50",
       "name": "answer-time"
     },
@@ -119,13 +151,21 @@
         "title": "Problems in this answer",
         "noDataMessage": "No failed steps or exceptions in this answer.",
         "timeContextFromParameter": "TimeRange",
-        "timeContext": { "durationMs": 86400000 },
+        "timeContext": {
+          "durationMs": 86400000
+        },
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "crossComponentResources": ["__APP_INSIGHTS_ID__"],
+        "crossComponentResources": [
+          "__APP_INSIGHTS_ID__"
+        ],
         "visualization": "table"
       },
-      "conditionalVisibility": { "parameterName": "TraceId", "comparison": "isNotEqualTo", "value": "" },
+      "conditionalVisibility": {
+        "parameterName": "TraceId",
+        "comparison": "isNotEqualTo",
+        "value": ""
+      },
       "customWidth": "50",
       "name": "answer-problems"
     },
@@ -133,18 +173,26 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let traceId = trim(\" \", \"{TraceId}\");\nunion requests, dependencies, traces, exceptions\n| where operation_Id == traceId\n| extend Step = coalesce(name, message, type), Seconds = round(duration / 1000, 2)\n| project timestamp, Kind = itemType, Service = cloud_RoleName, Step, Seconds, Succeeded = success, Code = resultCode, SpanId = id, ParentId = operation_ParentId\n| order by timestamp asc",
+        "query": "let traceId = trim(\" \", \"{TraceId}\");\nunion requests, dependencies, traces, exceptions\n| where operation_Id == traceId\n| extend Step = coalesce(name, message, type), Seconds = round(duration / 1000, 2), Decision = tostring(customDimensions[\"demo.authz.outcome\"]), Lane = tostring(customDimensions[\"demo.lane\"])\n| project timestamp, Kind = itemType, Service = cloud_RoleName, Step, Lane, Decision, Seconds, Succeeded = success, Code = resultCode, SpanId = id, ParentId = operation_ParentId\n| order by timestamp asc",
         "size": 0,
         "title": "Every step in this answer, in order",
         "noDataMessage": "No steps found for this trace ID in the selected time range.",
         "timeContextFromParameter": "TimeRange",
-        "timeContext": { "durationMs": 86400000 },
+        "timeContext": {
+          "durationMs": 86400000
+        },
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "crossComponentResources": ["__APP_INSIGHTS_ID__"],
+        "crossComponentResources": [
+          "__APP_INSIGHTS_ID__"
+        ],
         "visualization": "table"
       },
-      "conditionalVisibility": { "parameterName": "TraceId", "comparison": "isNotEqualTo", "value": "" },
+      "conditionalVisibility": {
+        "parameterName": "TraceId",
+        "comparison": "isNotEqualTo",
+        "value": ""
+      },
       "name": "answer-steps"
     },
     {
@@ -152,48 +200,70 @@
       "content": {
         "json": "## One conversation\nEvery answer in the same chat, as one summary row and as a list."
       },
-      "conditionalVisibility": { "parameterName": "ConversationId", "comparison": "isNotEqualTo", "value": "" },
+      "conditionalVisibility": {
+        "parameterName": "ConversationId",
+        "comparison": "isNotEqualTo",
+        "value": ""
+      },
       "name": "h-conversation"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let conversationId = trim(\" \", \"{ConversationId}\");\nlet answers = requests\n    | where tostring(customDimensions[\"gen_ai.conversation.id\"]) == conversationId\n    | distinct operation_Id;\nunion requests, dependencies\n| where operation_Id in (answers)\n| summarize Questions = dcount(operation_Id), Started = min(timestamp), Ended = max(timestamp), Agents = make_set_if(tostring(customDimensions[\"gen_ai.agent.name\"]), isnotempty(tostring(customDimensions[\"gen_ai.agent.name\"]))), Models = make_set_if(tostring(customDimensions[\"gen_ai.response.model\"]), isnotempty(tostring(customDimensions[\"gen_ai.response.model\"]))), [\"Input tokens\"] = sum(tolong(customDimensions[\"gen_ai.usage.input_tokens\"])), [\"Output tokens\"] = sum(tolong(customDimensions[\"gen_ai.usage.output_tokens\"])), [\"Failed steps\"] = countif(success == false), TraceIds = make_set(operation_Id, 100)",
+        "query": "let conversationId = trim(\" \", \"{ConversationId}\");\nlet traces = requests\n    | where tostring(customDimensions[\"gen_ai.conversation.id\"]) == conversationId\n    | distinct operation_Id;\nunion requests, dependencies\n| where operation_Id in (traces)\n| summarize Questions = dcountif(operation_Id, itemType == 'request' and name has 'compare'), Approvals = dcountif(operation_Id, itemType == 'request' and name has 'approval'), Started = min(timestamp), Ended = max(timestamp), Models = make_set_if(tostring(customDimensions[\"gen_ai.response.model\"]), isnotempty(tostring(customDimensions[\"gen_ai.response.model\"]))), [\"Input tokens\"] = sum(tolong(customDimensions[\"gen_ai.usage.input_tokens\"])), [\"Output tokens\"] = sum(tolong(customDimensions[\"gen_ai.usage.output_tokens\"])), Decisions = make_set_if(tostring(customDimensions[\"demo.authz.outcome\"]), isnotempty(tostring(customDimensions[\"demo.authz.outcome\"]))), [\"Failed steps\"] = countif(success == false), TraceIds = make_set(operation_Id, 100)",
         "size": 4,
         "title": "Whole chat, one row",
         "noDataMessage": "No answers found for this conversation ID in the selected time range.",
         "timeContextFromParameter": "TimeRange",
-        "timeContext": { "durationMs": 86400000 },
+        "timeContext": {
+          "durationMs": 86400000
+        },
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "crossComponentResources": ["__APP_INSIGHTS_ID__"],
+        "crossComponentResources": [
+          "__APP_INSIGHTS_ID__"
+        ],
         "visualization": "table"
       },
-      "conditionalVisibility": { "parameterName": "ConversationId", "comparison": "isNotEqualTo", "value": "" },
+      "conditionalVisibility": {
+        "parameterName": "ConversationId",
+        "comparison": "isNotEqualTo",
+        "value": ""
+      },
       "name": "conversation-summary"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let conversationId = trim(\" \", \"{ConversationId}\");\nrequests\n| where tostring(customDimensions[\"gen_ai.conversation.id\"]) == conversationId\n| summarize Started = min(timestamp), Seconds = round(max(duration) / 1000, 1), [\"Failed steps\"] = countif(success == false), Agent = take_any(coalesce(tostring(customDimensions[\"gen_ai.agent.name\"]), cloud_RoleName)) by TraceId = operation_Id\n| order by Started asc",
+        "query": "let conversationId = trim(\" \", \"{ConversationId}\");\nrequests\n| where tostring(customDimensions[\"gen_ai.conversation.id\"]) == conversationId\n| summarize Started = min(timestamp), Seconds = round(max(duration) / 1000, 1), [\"Failed steps\"] = countif(success == false), Kind = take_any(iff(name has \"approval\", \"Approve or Reject\", \"Question\")) by TraceId = operation_Id\n| order by Started asc",
         "size": 0,
         "title": "Answers in this chat (select a row to review it above)",
         "noDataMessage": "No answers found for this conversation ID in the selected time range.",
         "timeContextFromParameter": "TimeRange",
-        "timeContext": { "durationMs": 86400000 },
+        "timeContext": {
+          "durationMs": 86400000
+        },
         "exportFieldName": "TraceId",
         "exportParameterName": "TraceId",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "crossComponentResources": ["__APP_INSIGHTS_ID__"],
+        "crossComponentResources": [
+          "__APP_INSIGHTS_ID__"
+        ],
         "visualization": "table"
       },
-      "conditionalVisibility": { "parameterName": "ConversationId", "comparison": "isNotEqualTo", "value": "" },
+      "conditionalVisibility": {
+        "parameterName": "ConversationId",
+        "comparison": "isNotEqualTo",
+        "value": ""
+      },
       "name": "conversation-answers"
     }
   ],
-  "fallbackResourceIds": ["__APP_INSIGHTS_ID__"],
+  "fallbackResourceIds": [
+    "__APP_INSIGHTS_ID__"
+  ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }

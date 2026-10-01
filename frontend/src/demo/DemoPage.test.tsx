@@ -147,7 +147,7 @@ describe("DemoPage", () => {
     expect(
       screen.getByText(/prepare_transfer\(account_id=A-1001, amount=12000\)/),
     ).toBeInTheDocument();
-    expect(screen.getByText("gpt-4.1-2025-04-14")).toBeInTheDocument();
+    expect(screen.getAllByText("gpt-4.1-2025-04-14").length).toBeGreaterThan(0);
     expect(screen.getByText("320 / 0 / 30 / 0")).toBeInTheDocument();
     expect(screen.getByText(/\$0\.000880 \(estimate\)/)).toBeInTheDocument();
     expect(
