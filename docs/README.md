@@ -30,6 +30,7 @@ need rules enforced by software, not just good prompts.
 | [api/README.md](api/README.md) | HTTP API and streaming event contract |
 | [cost/cost-to-run.md](cost/cost-to-run.md) | Monthly cost today |
 | [cost/cost-at-scale.md](cost/cost-at-scale.md) | Cost at 10x and 100x usage |
+| [presentation/README.md](presentation/README.md) | Talk slides, presenter script, two-screen mode, and QR codes |
 | [operations/deploy.md](operations/deploy.md) | Deploy with `azd up` |
 | [operations/custom-domain.md](operations/custom-domain.md) | Custom domain + free managed certificate |
 | [operations/rollback.md](operations/rollback.md) | Undo a bad release |
@@ -74,6 +75,7 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | Microsoft Agent Framework for orchestration | ⚠️ | Not used: one structured-output call, no agent loop — [ADR 0009](adr/0009-direct-structured-output-no-agent-framework.md) |
 | PR preview deploy + CD on merge | ⚠️ | `deploy.yml` is ready but inert until OIDC variables are set — [deploy](operations/deploy.md) |
 | Custom domain | ✅ | <https://bankmanager.eps-demos.site>: free Azure-managed certificate, defined in Bicep, auto-renewing — [custom domain](operations/custom-domain.md) |
+| Presentation experience (opt-in) | ✅ | Built on request: talk deck, script, presenter console, Demo Window, local QR codes — [presentation](presentation/README.md) |
 | Durable server-side history | ➖ | Not needed: history stays in browser storage only |
 
 ## Architecture Decision Records
