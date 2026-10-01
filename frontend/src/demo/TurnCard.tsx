@@ -154,6 +154,7 @@ export function TurnCard({ turn, index, onDecision }: Props) {
           {s.request} {index + 1}
         </h3>
         <q>{turn.prompt}</q>
+        {turn.practice && <span className="badge practice">{s.practiceBadge}</span>}
       </header>
       <StepList turn={turn} />
       {turn.toolSelected && (

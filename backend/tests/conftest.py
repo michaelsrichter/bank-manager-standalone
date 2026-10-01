@@ -16,9 +16,12 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (  # noqa: E4
     InMemorySpanExporter,
 )
 
+from bank_manager.request_context import ConversationSpanProcessor  # noqa: E402
+
 SPAN_EXPORTER = InMemorySpanExporter()
 METRIC_READER = InMemoryMetricReader()
 _provider = TracerProvider()
+_provider.add_span_processor(ConversationSpanProcessor())
 _provider.add_span_processor(SimpleSpanProcessor(SPAN_EXPORTER))
 trace.set_tracer_provider(_provider)
 metrics.set_meter_provider(MeterProvider(metric_readers=[METRIC_READER]))

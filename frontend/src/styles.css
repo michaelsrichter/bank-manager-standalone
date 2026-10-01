@@ -918,3 +918,29 @@ th {
     left: 0;
   }
 }
+
+/* Live / Practice mode bar */
+.mode-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--ok-text);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.mode-bar.practice {
+  border-left-color: var(--warn-text);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.badge.practice {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}

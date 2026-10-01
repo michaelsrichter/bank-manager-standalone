@@ -35,6 +35,18 @@ export interface AppConfig {
   limits: { maxPromptChars: number; perSessionPerMinute: number };
   fakeAi: boolean;
   repoUrl: string;
+  serviceVersion?: string;
+  /** Where "IDs and observability links" point. Null when telemetry is not configured. */
+  observability?: ObservabilityConfig | null;
+}
+
+/** Deployment values for links into Azure Monitor. Resource IDs, not secrets. */
+export interface ObservabilityConfig {
+  portalOrigin: string;
+  tenantId: string;
+  appInsightsResourceId: string;
+  answerReviewWorkbookId?: string | null;
+  overviewWorkbookId?: string | null;
 }
 
 export interface PolicyState {
@@ -78,6 +90,8 @@ export type StreamEvent =
       seq: number;
       type: "run.started";
       traceId: string;
+      conversationId?: string | null;
+      practice?: boolean;
       model: { key: string; label: string; deployment: string };
     }
   | { seq: number; type: "step"; id: string; state: string; status?: string }

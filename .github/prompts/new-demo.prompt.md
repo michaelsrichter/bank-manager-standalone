@@ -73,7 +73,8 @@ often Private Link) and how it'll be documented.
    narrative, architecture, security, code tour, cost, operations, ADRs,
    telemetry). Add ADRs for any material decision, including the compute choice
    below. For private repos or nontechnical audiences, plan served static HTML
-   linked from the app.
+   linked from the app. Write every doc per
+   [eps-demo-plain-language](../skills/eps-demo-plain-language/SKILL.md).
 2. `infra/` — `main.bicep`/`resources.bicep` currently only wire the resource
    group, tags, budget, and App Insights/Log Analytics (compute-agnostic on
    purpose — see `docs/adr/0004-stack-agnostic-template.md`). Add the compute
@@ -100,7 +101,14 @@ often Private Link) and how it'll be documented.
    evidence, skeletons, mobile menu, colophon, footer, reset/new/clear controls).
 6. Production-readiness surfaces — for shared/long-lived demos add cached
    no-model health, correlated content-safe telemetry, actionable sustained
-   alerts, bounded history/files, realtime fallback, and retention.
+   alerts, bounded history/files, realtime fallback, and retention. Every
+   demo with an app sends OpenTelemetry from the browser, API, agent code, and
+   Foundry to Azure Monitor, adds a diagnostic setting to each Azure resource,
+   and extends the starter workbook in `infra/dashboards/`, per
+   [eps-demo-observability](../skills/eps-demo-observability/SKILL.md). Each
+   answer shows its trace ID and conversation ID with copy buttons and links
+   into Azure Monitor and the Answer review workbook, per
+   [eps-demo-telemetry-links](../skills/eps-demo-telemetry-links/SKILL.md).
 7. `.vscode/tasks.json` + `launch.json` — replace the placeholder `dev` task
    with one dedicated task per service (distinct icon/color, per
    `eps-demo-devx`) plus a "Run All" compound and a "Debug All" launch
@@ -133,3 +141,6 @@ Use `eps-demo-production-readiness` for the full contract.
   no-partner-name rules — everything else can be a documented gap, nothing is
   a silent shortcut.
 - Keep changes surgical and cite skills in commit/PR messages.
+- Do not build the presentation experience during bootstrap. It is opt-in
+  ([eps-demo-presentation](../skills/eps-demo-presentation/SKILL.md)); offer it
+  only after the demo is verified, and build it only if the user asks.

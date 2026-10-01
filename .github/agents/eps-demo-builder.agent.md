@@ -16,7 +16,8 @@ preview, or partially deployed environment.
 
 1. Read `AGENTS.md` and `.github/skills/eps-demo-standards/SKILL.md`.
 2. Load only the focused skills required by the request, including
-   `eps-demo-production-readiness` for any shared or long-lived demo.
+   `eps-demo-production-readiness` for any shared or long-lived demo and
+   `eps-demo-plain-language` before writing any docs or UI text.
 3. Inspect the current repository before asking questions.
 4. Resolve values already present in the request, repository, Azure/azd
    environment, or existing ADRs. Ask only about unresolved choices that
@@ -49,7 +50,9 @@ Restate the plan with the skills and ADRs that govern material choices.
 3. Backend boundaries and deterministic fakes.
 4. Hosted agents, external tools, prompts, and evaluations.
 5. Responsive frontend states and evidence.
-6. Health, history, files, telemetry, alerts, and operational controls.
+6. Health, history, files, telemetry, alerts, and operational controls,
+   including the "IDs and observability links" panel under each answer
+   (`eps-demo-telemetry-links`).
 7. VS Code/devcontainer and uniform CLI.
 8. CI/CD and repository hygiene.
 
@@ -64,10 +67,18 @@ Azure/downstream systems, never only in prompt wording.
   gate before handoff.
 - Test positive and negative authorization, not just answer text.
 - Verify the live public/custom-domain journey, health, routed model attribution,
-  telemetry queries, and served docs.
+  telemetry queries, and served docs. Open one live answer in Azure Monitor from
+  the app's IDs and observability links.
 - Remove temporary resources and packages.
 - Ensure the release commit is pushed and the tree is clean.
 - Report deployed URLs, validation evidence, costs/gaps, and rollback path.
+
+## Optional: presentations
+
+The presentation experience (`eps-demo-presentation`) is opt-in. Do not build
+it unless the user asks for slides, a talk, a presenter script, or a presenter
+mode. After a verified release, you may mention it once as an optional next
+step.
 
 Never expose secrets, invent successful checks, weaken controls to make a demo
 pass, or merge a PR without explicit approval.

@@ -2,19 +2,23 @@ import { useEffect, useState } from "react";
 
 export type Route =
   | { page: "home" }
-  | { page: "demo" }
+  /** `#/demo?mode=practice` opens Practice: no AI model, real policy checks. */
+  | { page: "demo"; practice: boolean }
   | { page: "health" }
   | { page: "privacy" }
   | { page: "terms" }
   | { page: "docs"; doc: string };
 
 export function parseHash(hash: string): Route {
-  const path = hash.replace(/^#\/?/, "");
+  const [path, query = ""] = hash.replace(/^#\/?/, "").split("?", 2);
   if (path.startsWith("docs")) {
     const doc = decodeURIComponent(path.slice(5)) || "README.md";
     return { page: "docs", doc };
   }
-  if (path === "demo" || path === "health" || path === "privacy" || path === "terms") {
+  if (path === "demo") {
+    return { page: "demo", practice: new URLSearchParams(query).get("mode") === "practice" };
+  }
+  if (path === "health" || path === "privacy" || path === "terms") {
     return { page: path };
   }
   return { page: "home" };

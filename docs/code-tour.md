@@ -17,7 +17,7 @@ silence counts as a stall.
 
 <!-- tour:snippet id="api-deliver" file="frontend/src/lib/api.ts" lang="typescript" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/frontend/src/lib/api.ts#L156-L162"><code>frontend/src/lib/api.ts</code></a> · lines 156–162</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/frontend/src/lib/api.ts#L178-L184"><code>frontend/src/lib/api.ts</code></a> · lines 178–184</summary>
 
 ```typescript
 const deliver = (line: string) => {
@@ -43,11 +43,16 @@ server-side and never trusted from the request body (see the
 
 <!-- tour:snippet id="main-guard" file="backend/bank_manager/main.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L208-L219"><code>backend/bank_manager/main.py</code></a> · lines 208–219</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L235-L251"><code>backend/bank_manager/main.py</code></a> · lines 235–251</summary>
 
 ```python
 @app.middleware("http")
 async def guard_requests(request: Request, call_next: Any) -> Response:
+    request_context.begin_request(
+        request.url.path,
+        request.headers.get(request_context.CONVERSATION_HEADER),
+        request.headers.get(request_context.MODE_HEADER),
+    )
     if request.method == "POST":
         length = request.headers.get("content-length")
         if length is None:
@@ -127,7 +132,7 @@ allow-list, so prompts, results, and account data can't leak into logs.
 
 <!-- tour:snippet id="telemetry-allowlist" file="backend/bank_manager/telemetry.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/telemetry.py#L48-L56"><code>backend/bank_manager/telemetry.py</code></a> · lines 48–56</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/telemetry.py#L61-L69"><code>backend/bank_manager/telemetry.py</code></a> · lines 61–69</summary>
 
 ```python
 def safe_properties(name: str, properties: dict[str, Any]) -> dict[str, Any]:

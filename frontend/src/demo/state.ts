@@ -33,6 +33,14 @@ export interface Turn {
   governed?: LaneResult;
   approval?: ApprovalState;
   traceId?: string;
+  /** The chat this answer belongs to (`gen_ai.conversation.id`). */
+  conversationId?: string;
+  /** Practice skips the AI model. Never shown as a live answer. */
+  practice?: boolean;
+  /** When the answer finished (ISO time). Keeps review queries to a small window. */
+  answeredAt?: string;
+  /** Trace of the person's Approve or Reject decision, when there was one. */
+  approvalTraceId?: string;
   error?: string;
   retryAfter?: number;
 }
@@ -63,6 +71,7 @@ export type Action =
       turnId: string;
       decision: "approve" | "reject";
       result: LaneResult;
+      traceId?: string;
     }
   | { type: "approval.failed"; turnId: string };
 
@@ -99,7 +108,12 @@ function withStep(steps: StepState[], step: StepState): StepState[] {
 export function applyEvent(turn: Turn, event: StreamEvent): Turn {
   switch (event.type) {
     case "run.started":
-      return { ...turn, traceId: event.traceId };
+      return {
+        ...turn,
+        traceId: event.traceId,
+        conversationId: event.conversationId ?? turn.conversationId,
+        practice: event.practice ?? turn.practice,
+      };
     case "step":
       return {
         ...turn,
@@ -123,7 +137,7 @@ export function applyEvent(turn: Turn, event: StreamEvent): Turn {
       return { ...turn, [lane]: event.result, approval };
     }
     case "run.completed":
-      return { ...turn, status: "done" };
+      return { ...turn, status: "done", answeredAt: new Date().toISOString() };
     case "error":
       return {
         ...turn,
@@ -180,6 +194,7 @@ export function reducer(state: DemoState, action: Action): DemoState {
         ...turn,
         governed: action.result,
         approval: action.decision === "approve" ? "approved" : "rejected",
+        approvalTraceId: action.traceId ?? turn.approvalTraceId,
       }));
     case "approval.failed":
       return updateTurn(state, action.turnId, (turn) => ({ ...turn, approval: "pending" }));

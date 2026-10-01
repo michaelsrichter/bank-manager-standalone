@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from . import request_context
 from .ai.router import FakeIntentRouter, IntentRouter, OpenAIIntentRouter
 from .bank.data import DEFAULT_PERSONA_ID, SCENARIOS, public_personas
 from .bank.governance import UnknownPersonaError, build_control, manager_snapshot
@@ -29,17 +30,19 @@ FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "ai" / "
 SESSION_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 )
-PAGES = {"home", "demo", "health", "docs", "privacy", "terms"}
+PAGES = {"home", "demo", "health", "docs", "privacy", "terms", "presentation"}
 
 SECURITY_HEADERS = {
     "Content-Security-Policy": (
         "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
-        "connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; "
+        "connect-src 'self'; font-src 'self'; frame-src 'self'; frame-ancestors 'self'; "
+        "base-uri 'none'; "
         "form-action 'self'"
     ),
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "X-Frame-Options": "DENY",
+    # Same-site framing only: the presenter Demo Window shows the live demo in a frame.
+    "X-Frame-Options": "SAMEORIGIN",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     # HTTPS-only site (Container Apps redirects HTTP); browsers remember that for 1 year.
     "Strict-Transport-Security": "max-age=31536000",
@@ -103,6 +106,7 @@ class AppDependencies:
     intent_config: IntentRoleConfig
     router: IntentRouter
     control: AgentControl
+    practice_router: IntentRouter
     health: HealthService
     limiter: SlidingWindowLimiter
     sink: EventSink
@@ -141,17 +145,35 @@ class AppDependencies:
                 else "No telemetry destination configured.",
             )
         )
+        sink = LoggingEventSink()
         return cls(
             settings=settings,
             intent_config=intent_config,
             router=router,
             control=control,
-            health=HealthService(probes, ttl_seconds=settings.health_cache_seconds),
+            # Practice skips the AI model with recorded tool choices. Policy checks still run.
+            practice_router=FakeIntentRouter.from_file(FIXTURES, label="practice"),
+            health=HealthService(
+                probes,
+                ttl_seconds=settings.health_cache_seconds,
+                on_refresh=lambda snapshot: emit_health(sink, snapshot),
+            ),
             limiter=SlidingWindowLimiter(
                 per_ip=settings.per_ip_requests_per_minute,
                 per_session=settings.per_session_requests_per_minute,
             ),
-            sink=LoggingEventSink(),
+            sink=sink,
+        )
+
+
+def emit_health(sink: EventSink, snapshot: dict[str, Any]) -> None:
+    """One health_check event per component each time the cached snapshot refreshes."""
+    for component in snapshot.get("components", []):
+        sink.emit(
+            "health_check",
+            component=component["name"],
+            status=component["status"],
+            critical=component["critical"],
         )
 
 
@@ -198,7 +220,12 @@ def problem(status: int, code: str, message: str, **headers: str) -> JSONRespons
 def create_app(deps: AppDependencies | None = None) -> FastAPI:
     if deps is None:
         settings = Settings.from_env()
-        configure_telemetry(settings.appinsights_configured, settings.azure_client_id)
+        configure_telemetry(
+            settings.appinsights_configured,
+            settings.azure_client_id,
+            service_version=settings.service_version,
+            environment=settings.environment,
+        )
         deps = AppDependencies.from_settings(settings)
     settings = deps.settings
     app = FastAPI(title="Bank Manager Governance Demo", docs_url=None, redoc_url=None)
@@ -207,6 +234,11 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
     # tour:begin main-guard
     @app.middleware("http")
     async def guard_requests(request: Request, call_next: Any) -> Response:
+        request_context.begin_request(
+            request.url.path,
+            request.headers.get(request_context.CONVERSATION_HEADER),
+            request.headers.get(request_context.MODE_HEADER),
+        )
         if request.method == "POST":
             length = request.headers.get("content-length")
             if length is None:
@@ -252,6 +284,8 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
             },
             "fakeAi": settings.fake_ai,
             "repoUrl": settings.repo_url,
+            "serviceVersion": settings.service_version,
+            "observability": settings.observability.public() if settings.observability else None,
         }
 
     @app.post("/api/compare", openapi_extra=request_body(CompareRequest))
@@ -282,6 +316,8 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
             return problem(400, "invalid_selection", "Unknown model or persona.")
         deps.sink.emit("model_selection", model_key=option.key, deployment=option.deployment)
         trace_id = current_trace_id()
+        practice = request_context.mode() == "practice"
+        practice_router = deps.practice_router
 
         async def ndjson() -> AsyncIterator[bytes]:
             last_seq = 0
@@ -290,7 +326,7 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
                     prompt=prompt,
                     snapshot=snapshot,
                     option=option,
-                    router=deps.router,
+                    router=practice_router if practice else deps.router,
                     control=deps.control,
                     sink=deps.sink,
                     trace_id=trace_id,
@@ -346,7 +382,11 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
             tool=action["tool_name"],
         )
         return JSONResponse(
-            {"result": result, "traceId": current_trace_id()},
+            {
+                "result": result,
+                "traceId": current_trace_id(),
+                "conversationId": request_context.conversation_id(),
+            },
             headers={"Cache-Control": "no-store"},
         )
 

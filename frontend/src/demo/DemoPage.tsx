@@ -31,6 +31,8 @@ interface Props {
   newId?: () => string;
   now?: () => string;
   reportTiming?: (timing: ClientTiming) => void;
+  /** Practice skips the AI model and uses recorded tool choices. Policy checks still run. */
+  practice?: boolean;
 }
 
 const SETTINGS_KEY = "bm.settings.v1";
@@ -60,6 +62,7 @@ export function DemoPage({
   newId = () => crypto.randomUUID(),
   now = () => new Date().toISOString(),
   reportTiming = sendClientTiming,
+  practice = false,
 }: Props) {
   const s = t().demo;
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -131,6 +134,8 @@ export function DemoPage({
       policyState: settings.policyState,
       status: "streaming",
       steps: [],
+      conversationId: thread.id,
+      practice,
     };
     dispatch({ type: "turn.start", turn });
     setPrompt("");
@@ -149,6 +154,7 @@ export function DemoPage({
           timer.event(event.type);
           dispatch({ type: "turn.event", turnId: turn.id, event });
         },
+        { context: { conversationId: thread.id, practice } },
       );
     } catch (error) {
       timer.outcome =
@@ -190,8 +196,16 @@ export function DemoPage({
       const response = await api.resolveApproval(
         { action, personaId: turn.personaId, policyState: turn.policyState, decision },
         profile.id,
+        undefined,
+        { conversationId: turn.conversationId ?? thread.id, practice: Boolean(turn.practice) },
       );
-      dispatch({ type: "approval.resolved", turnId: turn.id, decision, result: response.result });
+      dispatch({
+        type: "approval.resolved",
+        turnId: turn.id,
+        decision,
+        result: response.result,
+        traceId: response.traceId,
+      });
     } catch {
       dispatch({ type: "approval.failed", turnId: turn.id });
     }
@@ -315,6 +329,15 @@ export function DemoPage({
       <section className="demo-main">
         <h1>{s.title}</h1>
         <p className="lead">{s.intro}</p>
+        <div className={practice ? "mode-bar practice" : "mode-bar"} role="status">
+          <span>
+            <strong>{practice ? s.practiceOn : s.liveOn}</strong>{" "}
+            {practice ? s.practiceExplain : s.liveExplain}
+          </span>
+          <a className="button" href={practice ? "#/demo" : "#/demo?mode=practice"}>
+            {practice ? s.switchToLive : s.switchToPractice}
+          </a>
+        </div>
         <form className="prompt-form" onSubmit={submit}>
           <label htmlFor="prompt">{s.promptLabel}</label>
           <div className="prompt-row">

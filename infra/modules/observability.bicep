@@ -101,7 +101,7 @@ resource workbook 'Microsoft.Insights/workbooks@2023-06-01' = {
     version: 'Notebook/1.0'
     serializedData: replace(
       replace(
-        loadTextContent('../workbooks/bank-manager-telemetry.workbook.json'),
+        loadTextContent('../dashboards/demo-overview.workbook.json'),
         '__WORKSPACE_ID__',
         logAnalytics.id
       ),

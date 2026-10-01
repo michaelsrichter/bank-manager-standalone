@@ -14,8 +14,8 @@ from pathlib import Path
 OUT = (
     Path(__file__).resolve().parents[1]
     / "infra"
-    / "workbooks"
-    / "bank-manager-telemetry.workbook.json"
+    / "dashboards"
+    / "demo-overview.workbook.json"
 )
 WORKSPACE = "microsoft.operationalinsights/workspaces"
 
