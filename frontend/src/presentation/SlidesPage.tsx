@@ -147,6 +147,19 @@ export function SlidesPage({
         `${window.location.pathname}#${deck.slides[current].id}`,
       );
   }, [current, deck]);
+  // Open a shared link such as /presentation/session#rego on that slide.
+  useEffect(() => {
+    if (initial > 0) refs.current[initial]?.scrollIntoView({ block: "start" });
+    const onHash = () => {
+      const index = deck.slides.findIndex(
+        (slide) => slide.id === decodeURIComponent(window.location.hash.slice(1)),
+      );
+      if (index >= 0) goTo(index);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deck, goTo]);
   useEffect(() => {
     if (!running) return;
     const timer = window.setInterval(() => setElapsed((value) => value + 1), 1000);

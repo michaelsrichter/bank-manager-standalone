@@ -50,20 +50,22 @@ export type Deck = {
   slides: Slide[];
 };
 
-export const policyRegoSnippet = `} else := deny("account_access_denied", "The bank manager is not assigned to this account.") if {
+// An excerpt of the real pre-tool-call rules. Lines starting with "# ..." mark skipped
+// rules; every other line must appear in the policy file (checked by presentation.test.tsx).
+export const policyRegoSnippet = `# ... earlier rules: restricted mode, outside endpoints, missing account ID
+} else := deny("account_access_denied", "The bank manager is not assigned to this account.") if {
 	account_scoped_tool
 	not account_is_assigned
-} else := deny("role_not_authorized", "The current role is not authorized to use bank-manager tools.") if {
-	account_scoped_tool
-	not recognized_manager_role
-} else := deny("auditor_write_denied", "Auditors have read-only access and cannot perform account mutations.") if {
-	account_mutation_tool
-	manager_role == "auditor"
-# tour:end rego-account-access
+# ... role and auditor rules
 } else := deny("payment_amount_hard_limit", "Transfers over $50,000 are never allowed.") if {
 	is_payment_tool
 	amount > 50000
-}`;
+# ... customer approval and fraud rules
+} else := escalate("high_value_transfer_requires_approval", "Transfers over $10,000 require senior approval.") if {
+	is_payment_tool
+	amount > 10000
+	not bool_snapshot("high_value_transfer_authorized")
+# ... more rules, then the default: allow`;
 
 const liveFallback = [
   "Say the safe error out loud.",
@@ -486,8 +488,10 @@ export const sessionDeck: Deck = {
         surface: "slides",
         say: [
           "This is not a slide-only rule. It is the real policy file.",
-          "The first rule denies account access when the account is not assigned.",
-          "The second key rule denies transfers over fifty thousand dollars.",
+          "The rules are checked in order, and the first match wins.",
+          "One rule denies account access when the account is not assigned to you.",
+          "Another denies any transfer over fifty thousand dollars, no matter who asks.",
+          "Over ten thousand dollars, the policy does not say no. It asks a person to approve.",
         ],
       },
     },

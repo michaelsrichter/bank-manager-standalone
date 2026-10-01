@@ -37,8 +37,8 @@ export function Footer({ info = buildInfo, now }: Props) {
         <a href="#/docs/code-tour.md">{s.footer.codeTour}</a>
         <a href="#/docs/governance-tour.md">{s.footer.governanceTour}</a>
         <a href="#/docs/cost/cost-to-run.md">{s.footer.cost}</a>
-        <a href="/presentation/session">Talk slides</a>
-        <a href="/presentation/session/script">Presenter script</a>
+        <a href="/presentation/session">{s.footer.talkSlides}</a>
+        <a href="/presentation/session/script">{s.footer.presenterScript}</a>
         <a href="#/docs/README.md">{s.footer.docsHome}</a>
         <a href={SITE.repoUrl} target="_blank" rel="noopener noreferrer">
           {s.footer.source}

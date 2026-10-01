@@ -157,6 +157,9 @@
 .slide-code pre {
   max-height: 380px;
   overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
   background: var(--code-bg);
   color: var(--code-text);
   padding: 1rem;

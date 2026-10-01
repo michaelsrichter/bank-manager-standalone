@@ -28,6 +28,8 @@ export const en = {
     codeTour: "Code tour",
     governanceTour: "Governance tour",
     cost: "Cost",
+    talkSlides: "Talk slides",
+    presenterScript: "Presenter script",
     docsHome: "All docs",
     source: "Source on GitHub",
     products: "Microsoft products used",
@@ -101,7 +103,7 @@ export const en = {
     unavailable: "not reported",
     tokens: "Tokens (input / cached / output / reasoning)",
     cost: "Estimated cost",
-    fakeCost: "$0 (FAKE_AI mode, no model call)",
+    fakeCost: "$0 (practice or test mode, no AI model call)",
     traceId: "Trace ID",
     review: {
       title: "IDs and observability links",

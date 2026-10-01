@@ -104,8 +104,15 @@ describe("presentation content", () => {
               true,
             );
         if (block.kind === "code" && block.source) {
-          const source = readFileSync(`../${block.source}`, "utf8");
-          expect(normalize(source)).toContain(normalize(block.code));
+          const source = normalize(readFileSync(`../${block.source}`, "utf8"));
+          // "# ..." lines mark skipped rules; every other line must appear, in order.
+          let from = 0;
+          for (const line of block.code.split("\n").filter((l) => !l.startsWith("# ..."))) {
+            const at = source.indexOf(normalize(line), from);
+            expect(at, line).toBeGreaterThanOrEqual(0);
+            from = at;
+          }
+          expect(block.code).not.toContain("tour:");
         }
       }
     }
