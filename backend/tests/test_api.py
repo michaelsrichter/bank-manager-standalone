@@ -169,7 +169,10 @@ def test_rate_limit_returns_429_with_retry_after(tmp_path):
     )
     assert response.status_code == 429
     assert int(response.headers["retry-after"]) >= 1
-    assert ("rate_limited", {"scope": "session", "route": "compare"}) in deps.sink.events
+    assert (
+        "rate_limited",
+        {"scope": "session", "route": "compare", "demo.mode": "live"},
+    ) in deps.sink.events
 
 
 def test_approval_approve_and_reject(client, deps):
@@ -235,7 +238,9 @@ def test_page_view_only_accepts_known_pages(client, deps):
 def test_spa_serves_assets_index_and_security_headers(client):
     index = client.get("/demo")
     assert index.text == "<html>app</html>"
-    assert "frame-ancestors 'none'" in index.headers["content-security-policy"]
+    # Same-site framing only (the presenter Demo Window); other sites cannot frame us.
+    assert "frame-ancestors 'self'" in index.headers["content-security-policy"]
+    assert index.headers["x-frame-options"] == "SAMEORIGIN"
     assert index.headers["strict-transport-security"] == "max-age=31536000"
     asset = client.get("/assets/app.js")
     assert "immutable" in asset.headers["cache-control"]

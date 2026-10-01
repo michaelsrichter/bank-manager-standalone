@@ -48,11 +48,23 @@ export function newTraceparent(): string {
   return `00-${randomHex(16)}-${randomHex(8)}-01`;
 }
 
-function headers(sessionId: string): HeadersInit {
+/** One chat. Every request in it shares this ID (`gen_ai.conversation.id` in telemetry). */
+export interface RequestContext {
+  conversationId: string;
+  practice: boolean;
+}
+
+function headers(sessionId: string, context?: RequestContext): HeadersInit {
   return {
     "Content-Type": "application/json",
     "X-Demo-Session": sessionId,
     traceparent: newTraceparent(),
+    ...(context
+      ? {
+          "X-Conversation-Id": context.conversationId,
+          "X-Demo-Mode": context.practice ? "practice" : "live",
+        }
+      : {}),
   };
 }
 
@@ -93,14 +105,19 @@ export async function resolveApproval(
   },
   sessionId: string,
   fetcher: Fetch = fetch,
-): Promise<{ result: LaneResult; traceId: string }> {
+  context?: RequestContext,
+): Promise<{ result: LaneResult; traceId: string; conversationId?: string | null }> {
   const response = await fetcher("/api/approval", {
     method: "POST",
-    headers: headers(sessionId),
+    headers: headers(sessionId, context),
     body: JSON.stringify(body),
   });
   if (!response.ok) throw await failure(response);
-  return (await response.json()) as { result: LaneResult; traceId: string };
+  return (await response.json()) as {
+    result: LaneResult;
+    traceId: string;
+    conversationId?: string | null;
+  };
 }
 
 export function sendPageView(page: string, fetcher: Fetch = fetch): void {
@@ -136,12 +153,17 @@ export async function streamCompare(
   body: CompareBody,
   sessionId: string,
   onEvent: (event: StreamEvent) => void,
-  options: { fetcher?: Fetch; stallMs?: number; signal?: AbortSignal } = {},
+  options: {
+    fetcher?: Fetch;
+    stallMs?: number;
+    signal?: AbortSignal;
+    context?: RequestContext;
+  } = {},
 ): Promise<void> {
-  const { fetcher = fetch, stallMs = 45_000, signal } = options;
+  const { fetcher = fetch, stallMs = 45_000, signal, context } = options;
   const response = await fetcher("/api/compare", {
     method: "POST",
-    headers: headers(sessionId),
+    headers: headers(sessionId, context),
     body: JSON.stringify(body),
     signal,
   });

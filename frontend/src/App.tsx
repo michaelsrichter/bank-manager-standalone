@@ -21,6 +21,7 @@ import { PrivacyPage, TermsPage } from "./pages/LegalPages";
 
 // Docs (including highlighted code tours) load only when opened, keeping first load small.
 const DocsPage = lazy(() => import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })));
+const PresentationApp = lazy(() => import("./presentation/PresentationApp"));
 
 export function App() {
   const route = useRoute();
@@ -41,6 +42,40 @@ export function App() {
     setConsent(value);
   };
 
+  const presentationPath = window.location.pathname.startsWith("/presentation");
+  const demoWindow = window.location.pathname.endsWith("/demo-window");
+
+  if (presentationPath && demoWindow) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<Skeleton lines={8} label="Loading presentation" />}>
+          <PresentationApp />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  if (presentationPath) {
+    return (
+      <>
+        <Header
+          route={route}
+          theme={theme}
+          onToggleTheme={() => setTheme((value) => (value === "dark" ? "light" : "dark"))}
+        />
+        <main id="main" tabIndex={-1}>
+          <ErrorBoundary>
+            <Suspense fallback={<Skeleton lines={8} label="Loading presentation" />}>
+              <PresentationApp />
+            </Suspense>
+          </ErrorBoundary>
+        </main>
+        <Footer />
+        {consent === null && <CookieBanner onChoose={choose} />}
+      </>
+    );
+  }
+
   return (
     <>
       <Header
@@ -51,7 +86,9 @@ export function App() {
       <main id="main" tabIndex={-1}>
         <ErrorBoundary key={route.page}>
           {route.page === "home" && <HomePage />}
-          {route.page === "demo" && <DemoPage />}
+          {route.page === "demo" && (
+            <DemoPage practice={route.practice} key={String(route.practice)} />
+          )}
           {route.page === "health" && <HealthPage />}
           {route.page === "docs" && (
             <Suspense fallback={<Skeleton lines={8} label="Loading documentation" />}>

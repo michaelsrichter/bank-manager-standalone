@@ -43,17 +43,17 @@ operation_duration = meter.create_histogram(
     description="Duration of model calls.",
 )
 estimated_cost = meter.create_counter(
-    "bank_manager.ai.estimated_cost",
+    "demo.ai.estimated_cost",
     unit="USD",
     description="Estimated model cost from public list prices in config/models.json.",
 )
 policy_decisions = meter.create_counter(
-    "bank_manager.policy.decisions",
+    "demo.policy.decisions",
     unit="{decision}",
     description="Lane results by lane, status, and reason code.",
 )
 tool_executions = meter.create_counter(
-    "bank_manager.tool.executions",
+    "demo.tool.executions",
     unit="{call}",
     description="Tool executions by lane and tool name.",
 )
@@ -77,7 +77,7 @@ def chat_span(
         "gen_ai.request.max_tokens": max_tokens,
         "gen_ai.output.type": "json",
         "gen_ai.agent.name": AGENT_NAME,
-        "bank_manager.fake_ai": fake,
+        "demo.fake_ai": fake,
     }
     if server_address:
         attributes["server.address"] = server_address
@@ -130,7 +130,7 @@ def record_chat_result(
     span.set_attribute("gen_ai.usage.output_tokens", output_tokens)
     span.set_attribute("gen_ai.usage.cached_input_tokens", cached_input_tokens)
     span.set_attribute("gen_ai.usage.reasoning_tokens", reasoning_tokens)
-    span.set_attribute("bank_manager.selected_tool", tool_name or "unsupported")
+    span.set_attribute("demo.selected_tool", tool_name or "unsupported")
     base = {
         "gen_ai.operation.name": "chat",
         "gen_ai.provider.name": "fake" if fake else PROVIDER,
@@ -156,7 +156,7 @@ def start_agent_span(model_key: str, deployment: str) -> Span:
             "gen_ai.agent.name": AGENT_NAME,
             "gen_ai.agent.id": AGENT_NAME,
             "gen_ai.request.model": deployment,
-            "bank_manager.model_key": model_key,
+            "demo.model_key": model_key,
         },
     )
 
@@ -184,32 +184,59 @@ def tool_span(tool_name: str, lane: str, *, approved: bool = False) -> Iterator[
             "gen_ai.tool.name": tool_name,
             "gen_ai.tool.type": "function",
             "gen_ai.agent.name": AGENT_NAME,
-            "bank_manager.lane": lane,
-            "bank_manager.approved": approved,
+            "demo.lane": lane,
+            "demo.approved": approved,
         },
     ) as span:
         yield span
 
 
-def record_outcome(span: Span, result: Mapping[str, Any]) -> None:
-    span.set_attribute("bank_manager.status", str(result.get("status", "")))
-    span.set_attribute("bank_manager.reason", str(result.get("reason", "")))
+def authz_outcome(lane: str, status: str, reason: str) -> str:
+    """Plain outcome of a policy check, so dashboards can tell good denials from bad ones.
+
+    - ``allowed``: the tool may run (redaction still counts as allowed).
+    - ``approval_required``: paused until a person decides.
+    - ``denied_expected``: a written rule said no. This is the policy working.
+    - ``denied_unexpected``: the policy engine itself failed (fail closed). Investigate.
+    - ``not_checked``: the unsafe baseline lane, which has no policy on purpose.
+    """
+    if lane == "baseline":
+        return "not_checked"
+    if status in {"allow", "transform", "info"}:
+        return "allowed"
+    if status == "approval":
+        return "approval_required"
+    if reason.startswith("runtime_error"):
+        return "denied_unexpected"
+    return "denied_expected"
+
+
+def record_outcome(span: Span, result: Mapping[str, Any], lane: str = "governed") -> None:
+    status = str(result.get("status", ""))
+    reason = str(result.get("reason", ""))
+    span.set_attribute("demo.status", status)
+    span.set_attribute("demo.reason", reason)
+    span.set_attribute("demo.authz.outcome", authz_outcome(lane, status, reason))
+    span.set_attribute("demo.boundary", "bank-accounts")
     if "toolExecuted" in result:
-        span.set_attribute("bank_manager.tool_executed", bool(result["toolExecuted"]))
+        span.set_attribute("demo.tool_executed", bool(result["toolExecuted"]))
 
 
 def record_lane(result: Mapping[str, Any]) -> None:
     action = result.get("action") or {}
     tool = str(action.get("tool_name", "unsupported"))
     attributes = {
-        "bank_manager.lane": str(result["lane"]),
-        "bank_manager.status": str(result["status"]),
-        "bank_manager.reason": str(result["reason"]),
+        "demo.lane": str(result["lane"]),
+        "demo.status": str(result["status"]),
+        "demo.reason": str(result["reason"]),
+        "demo.authz.outcome": authz_outcome(
+            str(result["lane"]), str(result["status"]), str(result["reason"])
+        ),
         "gen_ai.tool.name": tool,
     }
     policy_decisions.add(1, attributes)
     if result.get("toolExecuted"):
-        tool_executions.add(1, {"bank_manager.lane": str(result["lane"]), "gen_ai.tool.name": tool})
+        tool_executions.add(1, {"demo.lane": str(result["lane"]), "gen_ai.tool.name": tool})
 
 
 # tour:begin tracing-acs-sink

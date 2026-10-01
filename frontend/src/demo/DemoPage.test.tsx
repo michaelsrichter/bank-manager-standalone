@@ -109,9 +109,17 @@ const events: StreamEvent[] = [
 function makeApi(overrides: Record<string, unknown> = {}) {
   return {
     getConfig: vi.fn().mockResolvedValue(config),
-    streamCompare: vi.fn(async (_body, _session, onEvent: (event: StreamEvent) => void) => {
-      events.forEach(onEvent);
-    }),
+    streamCompare: vi.fn(
+      async (
+        _body: unknown,
+        _session: string,
+        onEvent: (event: StreamEvent) => void,
+        options?: { context?: { conversationId: string; practice: boolean } },
+      ) => {
+        void options;
+        events.forEach(onEvent);
+      },
+    ),
     resolveApproval: vi.fn().mockResolvedValue({
       result: {
         ...governed,
@@ -139,7 +147,7 @@ describe("DemoPage", () => {
     expect(
       screen.getByText(/prepare_transfer\(account_id=A-1001, amount=12000\)/),
     ).toBeInTheDocument();
-    expect(screen.getByText("gpt-4.1-2025-04-14")).toBeInTheDocument();
+    expect(screen.getAllByText("gpt-4.1-2025-04-14").length).toBeGreaterThan(0);
     expect(screen.getByText("320 / 0 / 30 / 0")).toBeInTheDocument();
     expect(screen.getByText(/\$0\.000880 \(estimate\)/)).toBeInTheDocument();
     expect(
@@ -153,7 +161,23 @@ describe("DemoPage", () => {
     expect(api.resolveApproval).toHaveBeenCalledWith(
       expect.objectContaining({ decision: "approve", personaId: "M-101" }),
       expect.any(String),
+      undefined,
+      expect.objectContaining({ practice: false, conversationId: expect.any(String) }),
     );
+  });
+
+  it("runs Practice with the same chat ID on every request and labels it", async () => {
+    const api = makeApi();
+    const user = userEvent.setup();
+    render(<DemoPage api={api as never} newId={newId} practice />);
+    expect(await screen.findByText("Practice:")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Use Live" })).toHaveAttribute("href", "#/demo");
+    await user.click(await screen.findByRole("button", { name: /Prepare transfer \$12,000/ }));
+    await screen.findByText("Prepared transfer of $12,000.00");
+    const [, , , options] = api.streamCompare.mock.calls[0];
+    expect(options?.context?.practice).toBe(true);
+    expect(options?.context?.conversationId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(screen.getByText("Practice (not live)")).toBeInTheDocument();
   });
 
   it("sends the chosen model and typed prompt", async () => {

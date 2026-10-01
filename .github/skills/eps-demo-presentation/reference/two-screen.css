@@ -1,0 +1,25 @@
+/* Reference: the layout rules two-screen mode depends on. Theme tokens are yours. */
+
+/* Scaled stage: slides are laid out at 1600 x 900, then scaled to fit (FitStage.tsx). */
+.fit-stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.fit-stage__inner {
+  position: absolute; top: 50%; left: 50%; display: flex; flex-direction: column; justify-content: center;
+  padding: 72px 96px; box-sizing: border-box; transform-origin: center;
+}
+.screen-stage a { pointer-events: none; } /* Slides on the big screen are not click targets. */
+
+/* The Demo Window fills the browser window. No site header, footer, or scrollbars. */
+.screen-shell { position: fixed; inset: 0; overflow: hidden; }
+.screen-shell[data-controls="hidden"] { cursor: none; }
+.screen-shell[data-mode="black"] { background: #000; }
+.screen-main { position: absolute; inset: 0; }
+.screen-app { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.screen-app[hidden] { display: none; }
+.screen-black { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); }
+.screen-badge { position: absolute; right: 14px; bottom: 10px; margin: 0; font-size: 11px; opacity: .75; pointer-events: none; }
+.screen-shell[data-mode="app"] .screen-badge, .screen-shell[data-mode="black"] .screen-badge { display: none; }
+.screen-controls { position: absolute; left: 14px; bottom: 14px; transition: opacity .3s; }
+.screen-shell[data-controls="hidden"] .screen-controls { opacity: 0; pointer-events: none; }
+
+/* Console previews keep the audience's 16:9 shape. */
+.console-preview, .console-next { position: relative; aspect-ratio: 16 / 9; overflow: hidden; }

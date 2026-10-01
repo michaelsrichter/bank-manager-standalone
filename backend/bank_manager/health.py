@@ -153,11 +153,13 @@ class HealthService:
         ttl_seconds: float,
         clock: Callable[[], float] = time.monotonic,
         wall_clock: Callable[[], float] = time.time,
+        on_refresh: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self._probes = probes
         self._ttl = ttl_seconds
         self._clock = clock
         self._wall_clock = wall_clock
+        self._on_refresh = on_refresh
         self._cached: dict[str, Any] | None = None
         self._cached_at = 0.0
         self._lock = asyncio.Lock()
@@ -169,6 +171,8 @@ class HealthService:
             if self._fresh():
                 return self._cached  # type: ignore[return-value]
             self._cached = await self._collect()
+            if self._on_refresh is not None:
+                self._on_refresh(self._cached)
             self._cached_at = self._clock()
             return self._cached
 

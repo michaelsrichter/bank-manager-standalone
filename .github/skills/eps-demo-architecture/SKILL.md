@@ -59,6 +59,10 @@ boundary:
   networks.
 - Long-lived demos include the monitoring, health, retention, and alert resources
   required by `eps-demo-production-readiness`.
+- Every Azure resource that supports it gets a diagnostic setting to the demo's
+  Log Analytics workspace, in the same Bicep module as the resource. Dashboards
+  are Azure Workbooks deployed from `infra/dashboards/`. See
+  `eps-demo-observability`.
 
 ## Model configuration
 

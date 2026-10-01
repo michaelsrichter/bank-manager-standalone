@@ -214,14 +214,18 @@ _ACCOUNT = re.compile(r"\bA-\d{1,8}\b", re.IGNORECASE)
 class FakeIntentRouter:
     """Deterministic FAKE_AI=1 router: recorded fixtures first, then simple rules."""
 
-    def __init__(self, fixtures: dict[str, dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self, fixtures: dict[str, dict[str, Any]] | None = None, *, label: str = "fake"
+    ) -> None:
         self._fixtures = {key.strip().lower(): value for key, value in (fixtures or {}).items()}
+        # "fake" for FAKE_AI=1 test runs, "practice" for the visible Practice mode.
+        self._label = label
 
     @classmethod
-    def from_file(cls, path: Path) -> FakeIntentRouter:
+    def from_file(cls, path: Path, *, label: str = "fake") -> FakeIntentRouter:
         if not path.exists():
-            return cls()
-        return cls(json.loads(path.read_text(encoding="utf-8")))
+            return cls(label=label)
+        return cls(json.loads(path.read_text(encoding="utf-8")), label=label)
 
     def route(self, prompt: str, option: ModelOption) -> RoutingResult:
         recorded = self._fixtures.get(prompt.strip().lower())
@@ -237,7 +241,7 @@ class FakeIntentRouter:
             tracing.record_chat_result(
                 span,
                 deployment=option.deployment,
-                response_model=f"fake:{option.model}",
+                response_model=f"{self._label}:{option.model}",
                 response_id=None,
                 finish_reason="stop",
                 input_tokens=0,
@@ -250,7 +254,7 @@ class FakeIntentRouter:
         return RoutingResult(
             action=action,
             requested_deployment=option.deployment,
-            response_model=f"fake:{option.model}",
+            response_model=f"{self._label}:{option.model}",
             usage=Usage(),
             duration_ms=0,
             fake=True,

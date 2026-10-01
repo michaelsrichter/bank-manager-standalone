@@ -421,7 +421,7 @@ def validate_action(action: Mapping[str, Any]) -> dict[str, Any]:
 
 <!-- tour:snippet id="main-approval" file="backend/bank_manager/main.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L318-L339"><code>backend/bank_manager/main.py</code></a> · lines 318–339</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L354-L375"><code>backend/bank_manager/main.py</code></a> · lines 354–375</summary>
 
 ```python
 @app.post("/api/approval", openapi_extra=request_body(ApprovalRequest))
@@ -514,7 +514,7 @@ check as a visible step, so you can watch where a request stops.
 
 <!-- tour:snippet id="comparison-baseline" file="backend/bank_manager/comparison.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/comparison.py#L73-L97"><code>backend/bank_manager/comparison.py</code></a> · lines 73–97</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/comparison.py#L73-L98"><code>backend/bank_manager/comparison.py</code></a> · lines 73–98</summary>
 
 ```python
 def run_baseline(action: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -528,8 +528,9 @@ def run_baseline(action: Mapping[str, Any] | None) -> dict[str, Any]:
         )
     with tracing.tool_span(str(action["tool_name"]), "baseline") as span:
         value = execute_tool(str(action["tool_name"]), action["args"])
-        span.set_attribute("bank_manager.status", "allow")
-        span.set_attribute("bank_manager.tool_executed", True)
+        span.set_attribute("demo.status", "allow")
+        span.set_attribute("demo.authz.outcome", "not_checked")
+        span.set_attribute("demo.tool_executed", True)
     return project_result(
         "baseline",
         outcome(
@@ -549,7 +550,7 @@ def run_baseline(action: Mapping[str, Any] | None) -> dict[str, Any]:
 
 <!-- tour:snippet id="comparison-pre-tool" file="backend/bank_manager/comparison.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/comparison.py#L141-L157"><code>backend/bank_manager/comparison.py</code></a> · lines 141–157</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/comparison.py#L142-L158"><code>backend/bank_manager/comparison.py</code></a> · lines 142–158</summary>
 
 ```python
 yield "step", {"id": "governed.pre_tool", "state": "started"}
@@ -584,7 +585,7 @@ healthy **only if** the exact expected denial comes back.
 
 <!-- tour:snippet id="tracing-acs-sink" file="backend/bank_manager/tracing.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/tracing.py#L216-L239"><code>backend/bank_manager/tracing.py</code></a> · lines 216–239</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/tracing.py#L243-L266"><code>backend/bank_manager/tracing.py</code></a> · lines 243–266</summary>
 
 ```python
 class SpanEventTelemetrySink:

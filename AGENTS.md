@@ -18,12 +18,21 @@ acting**, especially `eps-demo-standards` first.
 | Identity & auth | `.github/skills/eps-demo-identity/SKILL.md` |
 | Testing & SOLID | `.github/skills/eps-demo-testing-solid/SKILL.md` |
 | Documentation | `.github/skills/eps-demo-docs/SKILL.md` |
+| Plain-language writing (all docs and UI text) | `.github/skills/eps-demo-plain-language/SKILL.md` |
 | Developer experience | `.github/skills/eps-demo-devx/SKILL.md` |
 | AI & models | `.github/skills/eps-demo-ai-models/SKILL.md` |
 | Cost & security | `.github/skills/eps-demo-cost-security/SKILL.md` |
 | Long-lived release readiness | `.github/skills/eps-demo-production-readiness/SKILL.md` |
+| Telemetry (OpenTelemetry) & Azure Monitor dashboards | `.github/skills/eps-demo-observability/SKILL.md` |
+| Review IDs in the app & links into Azure Monitor | `.github/skills/eps-demo-telemetry-links/SKILL.md` |
 | Compliance | `.github/skills/eps-demo-compliance/SKILL.md` |
 | Repo hygiene | `.github/skills/eps-demo-repo-hygiene/SKILL.md` |
+| Presentations: talk decks, scripts, two-screen presenter mode (**opt-in only**) | `.github/skills/eps-demo-presentation/SKILL.md` |
+
+**Opt-in skills** are used only when the user asks for them. Today that is
+`eps-demo-presentation`. **This repo has opted in**: it has a presentation
+experience (`frontend/src/presentation/`, `docs/presentation/`), so keep it working
+and apply that skill to changes and reviews of it.
 
 ## Repository agents
 
@@ -53,8 +62,14 @@ template itself. Treat requests as normal feature work against the rules below.
   `backend/tests/fixtures/ai/`.
 - **Policy changes:** edit `backend/governance/policy/*.rego`, add an `opa test`
   case and a pytest case (positive **and** negative).
-- **Repo-specific ADRs:** 0007–0011 under `docs/adr/`. The compliance table in
+- **Repo-specific ADRs:** 0007–0012 under `docs/adr/`. The compliance table in
   `docs/README.md` must stay honest.
+- **Observability:** every answer shows its trace ID and conversation ID with
+  links into Azure Monitor (`eps-demo-telemetry-links`). Workbooks live in
+  `infra/dashboards/`, generated or edited in Git, never only in the portal.
+- **Practice mode** (`#/demo?mode=practice`) skips the AI model and still runs the
+  real policy engine. It is always labeled **Practice** and never presented as live.
+
 ## Hard rules (no exceptions without explicit human approval)
 
 1. Always hosted in **Azure**. Bicep for IaC.
@@ -78,6 +93,34 @@ template itself. Treat requests as normal feature work against the rules below.
 15. **Long-lived demos are operable** — apply
     `eps-demo-production-readiness` when the demo is globally shared or runs for
     weeks/months.
+16. **Plain language everywhere** — public UI is written for high-school
+    students and people whose first language is not English. All docs,
+    including technical `/docs`, follow `eps-demo-plain-language`.
+
+## Public-site language
+
+- Write for high-school students and people who do not speak English as their
+  first language. Use short, literal sentences and familiar examples.
+- Explain what the visitor can do and what happened before naming the
+  technology. Use an everyday example for abstract controls, such as: "A note
+  inside a delivery box cannot give permission to send private company files."
+- Keep service names, IDs, acronyms, raw errors, traces, and detailed cost math
+  in clearly labeled optional details. Show useful progress, never hidden
+  reasoning.
+- Keep technical precision and advanced material in `/docs`. These public-UI
+  rules do not require removing important details from engineering docs.
+
+## Documentation language (all docs)
+
+- Before writing or editing any documentation or explanatory text, load
+  `.github/skills/eps-demo-plain-language/SKILL.md`. It applies everywhere:
+  `/docs`, READMEs, UI help text, tooltips, labels, tutorials, setup steps,
+  demo scripts, explanatory code comments, and error messages.
+- Use short sentences and common words. Define each technical term and acronym
+  the first time it appears. Explain why a choice was made. Add a concrete
+  example when a definition alone could confuse.
+- Assume the reader is smart, not familiar. Simplify the explanation, not the
+  technical accuracy.
 
 ## Definition of done
 
@@ -87,7 +130,9 @@ A demo is not complete merely because it builds locally. Before handoff:
 2. the intended Azure environment and custom domain are current;
 3. the critical live journey and at least one expected denial are verified;
 4. health reports ready without scheduled model inference;
-5. model/tool/evidence/trace behavior is visible where applicable;
+5. model/tool/evidence/trace behavior is visible where applicable, and a live
+   answer's trace ID and conversation ID open in Azure Monitor from the app
+   (`eps-demo-telemetry-links`);
 6. narrative and technical docs are served and linked when repository access is
    not guaranteed;
 7. temporary deployment resources and packages are removed; and

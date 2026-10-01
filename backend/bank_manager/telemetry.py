@@ -10,6 +10,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Protocol
 
+from opentelemetry.sdk.resources import Resource
+
+from . import request_context
+
 EVENTS: dict[str, frozenset[str]] = {
     "page_view": frozenset({"page"}),
     "model_selection": frozenset({"model_key", "deployment"}),
@@ -28,13 +32,22 @@ EVENTS: dict[str, frozenset[str]] = {
         }
     ),
     "policy_decision": frozenset(
-        {"lane", "status", "reason", "tool", "intervention_point", "tool_executed"}
+        {
+            "lane",
+            "status",
+            "reason",
+            "tool",
+            "intervention_point",
+            "tool_executed",
+            "authz_outcome",
+        }
     ),
     "approval_decision": frozenset({"decision", "status", "reason", "tool"}),
     "rate_limited": frozenset({"scope", "route"}),
     "client_timing": frozenset(
         {"first_event_ms", "total_ms", "outcome", "model_key", "event_count"}
     ),
+    "health_check": frozenset({"component", "status", "critical"}),
 }
 
 LOGGER_NAME = "bank_manager.events"
@@ -66,7 +79,7 @@ class LoggingEventSink:
         self._logger = logger or logging.getLogger(LOGGER_NAME)
 
     def emit(self, name: str, **properties: Any) -> None:
-        attributes = safe_properties(name, properties)
+        attributes = {**safe_properties(name, properties), **request_context.log_context()}
         self._logger.info(
             name,
             extra={"microsoft.custom_event.name": name, **attributes},
@@ -80,10 +93,30 @@ class MemoryEventSink:
         self.events: list[tuple[str, dict[str, Any]]] = []
 
     def emit(self, name: str, **properties: Any) -> None:
-        self.events.append((name, safe_properties(name, properties)))
+        self.events.append(
+            (name, {**safe_properties(name, properties), **request_context.log_context()})
+        )
 
 
-def configure_telemetry(connection_configured: bool, azure_client_id: str | None) -> None:
+def telemetry_resource(service_version: str, environment: str) -> Resource:
+    """Resource attributes on every span, metric, and log (eps-demo-observability).
+
+    ``service.version`` is the Git commit, so each trace ties to the footer's build
+    stamp. ``deployment.environment.name`` keeps local runs off release dashboards.
+    ``OTEL_SERVICE_NAME`` and ``OTEL_RESOURCE_ATTRIBUTES`` are merged in by the SDK.
+    """
+    return Resource.create(
+        {"service.version": service_version, "deployment.environment.name": environment}
+    )
+
+
+def configure_telemetry(
+    connection_configured: bool,
+    azure_client_id: str | None,
+    *,
+    service_version: str = "unknown",
+    environment: str = "local",
+) -> None:
     """Export traces, metrics, and logs to Azure Monitor with Entra (managed identity) auth.
 
     Instrumented automatically: FastAPI requests, httpx (the OpenAI SDK's HTTP
@@ -102,6 +135,8 @@ def configure_telemetry(connection_configured: bool, azure_client_id: str | None
         credential=DefaultAzureCredential(managed_identity_client_id=azure_client_id),
         logger_name="bank_manager",
         enable_live_metrics=True,
+        resource=telemetry_resource(service_version, environment),
+        span_processors=[request_context.ConversationSpanProcessor()],
     )
     instrumentor = HTTPXClientInstrumentor()
     if not instrumentor.is_instrumented_by_opentelemetry:

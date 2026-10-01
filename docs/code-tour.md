@@ -17,7 +17,7 @@ silence counts as a stall.
 
 <!-- tour:snippet id="api-deliver" file="frontend/src/lib/api.ts" lang="typescript" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/frontend/src/lib/api.ts#L156-L162"><code>frontend/src/lib/api.ts</code></a> · lines 156–162</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/frontend/src/lib/api.ts#L178-L184"><code>frontend/src/lib/api.ts</code></a> · lines 178–184</summary>
 
 ```typescript
 const deliver = (line: string) => {
@@ -43,11 +43,16 @@ server-side and never trusted from the request body (see the
 
 <!-- tour:snippet id="main-guard" file="backend/bank_manager/main.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L208-L219"><code>backend/bank_manager/main.py</code></a> · lines 208–219</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L235-L251"><code>backend/bank_manager/main.py</code></a> · lines 235–251</summary>
 
 ```python
 @app.middleware("http")
 async def guard_requests(request: Request, call_next: Any) -> Response:
+    request_context.begin_request(
+        request.url.path,
+        request.headers.get(request_context.CONVERSATION_HEADER),
+        request.headers.get(request_context.MODE_HEADER),
+    )
     if request.method == "POST":
         length = request.headers.get("content-length")
         if length is None:
@@ -127,7 +132,7 @@ allow-list, so prompts, results, and account data can't leak into logs.
 
 <!-- tour:snippet id="telemetry-allowlist" file="backend/bank_manager/telemetry.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/telemetry.py#L48-L56"><code>backend/bank_manager/telemetry.py</code></a> · lines 48–56</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/telemetry.py#L61-L69"><code>backend/bank_manager/telemetry.py</code></a> · lines 61–69</summary>
 
 ```python
 def safe_properties(name: str, properties: dict[str, Any]) -> dict[str, Any]:
@@ -172,3 +177,42 @@ def _probe(self) -> ProbeResult:
 <!-- tour:end -->
 
 Tests: `test_model_probe_classifies_without_inference`, `test_health_service_caches_and_coalesces`.
+
+## 7. Every step of a chat carries the same IDs
+
+**What happens:** the browser sends a random chat ID in the `X-Conversation-Id`
+header (and `X-Demo-Mode: practice` in practice mode). The server keeps the ID only if
+it matches a strict pattern, then stamps it as `gen_ai.conversation.id` on the request
+span and, through a span processor, on every span that request starts. The first stream
+event (`run.started`) returns the trace ID and conversation ID, which the
+**IDs and observability links** panel under each answer shows.
+
+<!-- tour:snippet id="conversation-stamp" file="backend/bank_manager/request_context.py" lang="python" -->
+<details open>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/request_context.py#L66-L81"><code>backend/bank_manager/request_context.py</code></a> · lines 66–81</summary>
+
+```python
+def begin_request(path: str, conversation: str | None, demo_mode: str | None) -> None:
+    """Remember this request's IDs, and stamp them on the request span already running."""
+    _conversation_id.set(clean_conversation_id(conversation))
+    _mode.set(clean_mode(demo_mode))
+    _journey.set(JOURNEYS.get(path))
+    stamp(trace.get_current_span())
+
+
+def stamp(span: trace.Span) -> None:
+    if not span.is_recording():
+        return
+    if (conversation := _conversation_id.get()) is not None:
+        span.set_attribute(CONVERSATION_ATTRIBUTE, conversation)
+    if (journey := _journey.get()) is not None:
+        span.set_attribute(JOURNEY_ATTRIBUTE, journey)
+        span.set_attribute(MODE_ATTRIBUTE, _mode.get())
+```
+
+</details>
+<!-- tour:end -->
+
+Tests: `test_returned_trace_id_is_the_server_trace_and_every_span_has_the_conversation`,
+`test_unsafe_conversation_ids_and_modes_are_ignored`, and the frontend
+`observability-links.test.tsx`.

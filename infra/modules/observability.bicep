@@ -101,7 +101,7 @@ resource workbook 'Microsoft.Insights/workbooks@2023-06-01' = {
     version: 'Notebook/1.0'
     serializedData: replace(
       replace(
-        loadTextContent('../workbooks/bank-manager-telemetry.workbook.json'),
+        loadTextContent('../dashboards/demo-overview.workbook.json'),
         '__WORKSPACE_ID__',
         logAnalytics.id
       ),
@@ -111,8 +111,30 @@ resource workbook 'Microsoft.Insights/workbooks@2023-06-01' = {
   }
 }
 
+// ---------------------------------------------------------- Answer review
+// Review one answer (trace ID) or one chat (conversation ID). The app's
+// "IDs and observability links" panel links here (eps-demo-telemetry-links).
+resource answerReview 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: guid(resourceGroup().id, 'bank-manager-answer-review-workbook')
+  location: location
+  tags: tags
+  kind: 'shared'
+  properties: {
+    displayName: 'Governed AI Bank Assistant — answer review (${environmentName})'
+    category: 'workbook'
+    sourceId: appInsights.id
+    version: 'Notebook/1.0'
+    serializedData: replace(
+      loadTextContent('../dashboards/answer-review.workbook.json'),
+      '__APP_INSIGHTS_ID__',
+      appInsights.id
+    )
+  }
+}
+
 // ---------------------------------------------------------------- Dashboard
 var workbookBlade = '${environment().portal}/#@${tenant().tenantId}/resource${workbook.id}/workbook'
+var answerReviewBlade = '${environment().portal}/#@${tenant().tenantId}/resource${answerReview.id}/workbook'
 var foundryPortal = 'https://ai.azure.com/resource/overview?wsid=${project.id}'
 
 func logInputs(title string, kql string, control string, chart string, workspaceId string) array => [
@@ -206,6 +228,7 @@ var markdown = join(
     '**For demo purposes only.** OpenTelemetry from the app, agent harness, ACS policy engine, Azure AI Foundry, and Container Apps.'
     ''
     '- [Open the detailed workbook](${workbookBlade})'
+    '- [Review one answer or one chat](${answerReviewBlade})'
     '- [Application Insights (traces, live metrics)](${environment().portal}/#@${tenant().tenantId}/resource${appInsights.id}/overview)'
     '- [Foundry project tracing](${foundryPortal})'
     '- [Live demo](https://${web.properties.configuration.ingress.fqdn}/)'
@@ -256,7 +279,7 @@ resource dashboard 'Microsoft.Portal/dashboards@2022-12-01-preview' = {
             { name: 'OutputTokens', aggregation: 1, label: 'Output tokens' }
           ], 'ModelDeploymentName')
           gridTile(6, 12, 12, 4, 'Requests by route (health probes excluded)', 'AppRequests | where Name != "GET /api/health/live" | extend Route = iff(Name startswith "GET /" and not(Name startswith "GET /api"), "GET (pages and assets)", Name) | summarize Requests = count(), Failed = countif(Success == false), P95ms = round(percentile(DurationMs, 95), 0) by Route, Code = ResultCode | order by Requests desc', logAnalytics.id)
-          gridTile(0, 16, 18, 5, 'Latest agent runs (GenAI spans) — look up a Trace ID in Application Insights transaction search', 'AppDependencies | where Name == "invoke_agent bank-manager" | project TimeGenerated, Tool = tostring(Properties["bank_manager.selected_tool"]), Baseline = tostring(Properties["bank_manager.baseline.status"]), Governed = tostring(Properties["bank_manager.governed.status"]), Rule = tostring(Properties["bank_manager.governed.reason"]), Model = tostring(Properties["gen_ai.request.model"]), DurationMs = round(DurationMs, 0), TraceId = OperationId | extend Rule = iff(Rule == "default", "(allowed, no rule needed)", Rule) | top 50 by TimeGenerated desc', logAnalytics.id)
+          gridTile(0, 16, 18, 5, 'Latest agent runs (GenAI spans) — look up a Trace ID in the Answer review workbook', 'AppDependencies | where Name == "invoke_agent bank-manager" | extend P = Properties | project TimeGenerated, Version = AppVersion, Mode = tostring(P["demo.mode"]), Tool = coalesce(tostring(P["demo.selected_tool"]), tostring(P["bank_manager.selected_tool"])), Baseline = coalesce(tostring(P["demo.baseline.status"]), tostring(P["bank_manager.baseline.status"])), Governed = coalesce(tostring(P["demo.governed.status"]), tostring(P["bank_manager.governed.status"])), Decision = tostring(P["demo.authz.outcome"]), Rule = coalesce(tostring(P["demo.governed.reason"]), tostring(P["bank_manager.governed.reason"])), Model = tostring(P["gen_ai.request.model"]), DurationMs = round(DurationMs, 0), TraceId = OperationId, Conversation = tostring(P["gen_ai.conversation.id"]) | extend Rule = iff(Rule == "default", "(allowed, no rule needed)", Rule) | top 50 by TimeGenerated desc', logAnalytics.id)
         ]
       }
     ]
@@ -273,5 +296,7 @@ resource dashboard 'Microsoft.Portal/dashboards@2022-12-01-preview' = {
 
 output workbookId string = workbook.id
 output workbookUrl string = workbookBlade
+output answerReviewWorkbookId string = answerReview.id
+output answerReviewWorkbookUrl string = answerReviewBlade
 output dashboardUrl string = '${environment().portal}/#@${tenant().tenantId}/dashboard/arm${dashboard.id}'
 output foundryProjectName string = project.name

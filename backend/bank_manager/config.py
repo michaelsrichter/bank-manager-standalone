@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -141,6 +142,9 @@ class Settings:
     max_request_bytes: int
     max_prompt_chars: int
     health_cache_seconds: float
+    service_version: str = "unknown"
+    environment: str = "local"
+    observability: ObservabilityLinks | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -164,4 +168,76 @@ class Settings:
             max_request_bytes=int(values.get("MAX_REQUEST_BYTES", "8192")),
             max_prompt_chars=int(values.get("MAX_PROMPT_CHARS", "500")),
             health_cache_seconds=float(values.get("HEALTH_CACHE_SECONDS", "60")),
+            service_version=read_service_version(
+                Path(values.get("BUILD_INFO_PATH") or DEFAULT_BUILD_INFO)
+            ),
+            environment=(values.get("DEPLOYMENT_ENVIRONMENT") or "local").strip()[:32],
+            observability=ObservabilityLinks.from_env(values),
         )
+
+
+DEFAULT_BUILD_INFO = REPO_ROOT / "frontend" / "src" / "generated" / "build-info.json"
+_SHA = re.compile(r"^[0-9a-f]{7,40}$")
+
+
+def read_service_version(path: Path) -> str:
+    """The Git commit this build came from (written by frontend/scripts/build-info.mjs)."""
+    try:
+        sha = str(json.loads(path.read_text(encoding="utf-8")).get("sha", ""))
+    except (OSError, ValueError, AttributeError):
+        return "unknown"
+    return sha[:7] if _SHA.fullmatch(sha) else "unknown"
+
+
+_TENANT = re.compile(r"^[0-9a-f-]{36}$", re.IGNORECASE)
+_RESOURCE = re.compile(
+    r"^/subscriptions/[0-9a-f-]{36}/resourceGroups/[\w().-]{1,90}/providers/[\w.]+/[\w./-]+$",
+    re.IGNORECASE,
+)
+
+
+@dataclass(frozen=True)
+class ObservabilityLinks:
+    """Where the app's "IDs and observability links" point (eps-demo-telemetry-links).
+
+    These are resource identifiers from the deployment, not secrets. Opening them
+    still needs Azure access (Monitoring Reader and Workbook Reader). They are read
+    at runtime so one container image works in every environment.
+    """
+
+    portal_origin: str
+    tenant_id: str
+    app_insights_resource_id: str
+    answer_review_workbook_id: str | None
+    overview_workbook_id: str | None
+
+    @classmethod
+    def from_env(cls, values: Mapping[str, str]) -> ObservabilityLinks | None:
+        tenant = (values.get("PORTAL_TENANT_ID") or "").strip()
+        app_insights = (values.get("APPINSIGHTS_RESOURCE_ID") or "").strip()
+        origin = (values.get("PORTAL_ORIGIN") or "https://portal.azure.com").strip()
+        if not _TENANT.fullmatch(tenant) or not _RESOURCE.fullmatch(app_insights):
+            return None
+        if not origin.startswith("https://"):
+            return None
+
+        def optional(name: str) -> str | None:
+            value = (values.get(name) or "").strip()
+            return value if _RESOURCE.fullmatch(value) else None
+
+        return cls(
+            portal_origin=origin.rstrip("/"),
+            tenant_id=tenant,
+            app_insights_resource_id=app_insights,
+            answer_review_workbook_id=optional("ANSWER_REVIEW_WORKBOOK_ID"),
+            overview_workbook_id=optional("OVERVIEW_WORKBOOK_ID"),
+        )
+
+    def public(self) -> dict[str, str | None]:
+        return {
+            "portalOrigin": self.portal_origin,
+            "tenantId": self.tenant_id,
+            "appInsightsResourceId": self.app_insights_resource_id,
+            "answerReviewWorkbookId": self.answer_review_workbook_id,
+            "overviewWorkbookId": self.overview_workbook_id,
+        }

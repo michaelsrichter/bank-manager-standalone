@@ -111,6 +111,9 @@ Files use a separate authorization path from search:
 
 ## Observability and alerts
 
+- Follow `eps-demo-observability` for how to send telemetry to Azure Monitor
+  (browser, API, agent code, Foundry, and diagnostic settings) and how to build
+  the portal dashboards. The rules below say what that telemetry may contain.
 - Use one W3C trace ID across browser evidence, API, hosted agent, tools, Azure
   Monitor, and any approved secondary sink.
 - Telemetry records operational facts only. Exclude prompts, answers, reasoning

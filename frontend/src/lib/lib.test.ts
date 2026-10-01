@@ -171,7 +171,8 @@ describe("formatting and routing", () => {
 
   it("parses hash routes", () => {
     expect(parseHash("")).toEqual({ page: "home" });
-    expect(parseHash("#/demo")).toEqual({ page: "demo" });
+    expect(parseHash("#/demo")).toEqual({ page: "demo", practice: false });
+    expect(parseHash("#/demo?mode=practice")).toEqual({ page: "demo", practice: true });
     expect(parseHash("#/docs/security/auth.md")).toEqual({ page: "docs", doc: "security/auth.md" });
     expect(parseHash("#/docs")).toEqual({ page: "docs", doc: "README.md" });
     expect(parseHash("#/unknown")).toEqual({ page: "home" });

@@ -659,6 +659,59 @@ th {
   overflow-wrap: anywhere;
 }
 
+/* IDs and observability links (closed by default) */
+.review-ids {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.review-ids summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.review-ids dl {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.review-ids dt {
+  font-weight: 600;
+}
+
+.review-ids dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.review-ids small {
+  display: block;
+  color: var(--muted);
+}
+
+.review-ids ul.review-links {
+  padding-left: 1.2rem;
+}
+
+.review-ids h5 {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.9rem;
+}
+
+.review-ids pre {
+  overflow-x: auto;
+  font-size: 0.8rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.copy-button {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  margin-left: 0.25rem;
+}
+
 /* Cookie banner */
 .cookie-banner {
   position: fixed;
@@ -917,4 +970,30 @@ th {
     right: auto;
     left: 0;
   }
+}
+
+/* Live / Practice mode bar */
+.mode-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--ok-text);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.mode-bar.practice {
+  border-left-color: var(--warn-text);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.badge.practice {
+  background: var(--warn-bg);
+  color: var(--warn-text);
 }

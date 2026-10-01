@@ -16,7 +16,7 @@ from agent_control_specification import AgentControl
 from opentelemetry import trace
 from opentelemetry.trace import Span, Status, StatusCode
 
-from . import tracing
+from . import request_context, tracing
 from .ai.cost import estimate_cost
 from .ai.router import (
     ContentFilteredError,
@@ -81,8 +81,9 @@ def run_baseline(action: Mapping[str, Any] | None) -> dict[str, Any]:
         )
     with tracing.tool_span(str(action["tool_name"]), "baseline") as span:
         value = execute_tool(str(action["tool_name"]), action["args"])
-        span.set_attribute("bank_manager.status", "allow")
-        span.set_attribute("bank_manager.tool_executed", True)
+        span.set_attribute("demo.status", "allow")
+        span.set_attribute("demo.authz.outcome", "not_checked")
+        span.set_attribute("demo.tool_executed", True)
     return project_result(
         "baseline",
         outcome(
@@ -258,11 +259,22 @@ async def stream_comparison(
 def _annotate_agent_span(span: Span, event: Mapping[str, Any]) -> None:
     if event["type"] == "tool.selected":
         action = event.get("action") or {}
-        span.set_attribute("bank_manager.selected_tool", action.get("tool_name", "unsupported"))
+        span.set_attribute("demo.selected_tool", action.get("tool_name", "unsupported"))
+    elif event["type"] == "model.usage":
+        total = (event.get("cost") or {}).get("totalUsd")
+        if isinstance(total, (int, float)):
+            span.set_attribute("demo.cost.estimated_usd", float(total))
+        if event.get("responseModel"):
+            span.set_attribute("gen_ai.response.model", str(event["responseModel"]))
     elif event["type"] == "lane.result":
         result = event["result"]
-        span.set_attribute(f"bank_manager.{result['lane']}.status", result["status"])
-        span.set_attribute(f"bank_manager.{result['lane']}.reason", result["reason"])
+        span.set_attribute(f"demo.{result['lane']}.status", result["status"])
+        span.set_attribute(f"demo.{result['lane']}.reason", result["reason"])
+        if result["lane"] == "governed":
+            span.set_attribute(
+                "demo.authz.outcome",
+                tracing.authz_outcome("governed", result["status"], result["reason"]),
+            )
     elif event["type"] == "error":
         span.set_attribute("error.type", event["code"])
         span.set_status(Status(StatusCode.ERROR, event["code"]))
@@ -286,6 +298,8 @@ async def _stream_comparison(
     yield event(
         "run.started",
         traceId=trace_id,
+        conversationId=request_context.conversation_id(),
+        practice=request_context.mode() == "practice",
         model={"key": option.key, "label": option.label, "deployment": option.deployment},
     )
     yield event("step", id="route", state="started")
@@ -360,4 +374,5 @@ def _emit_decision(sink: EventSink, result: Mapping[str, Any]) -> None:
         tool=action.get("tool_name", "unsupported"),
         intervention_point=result.get("interventionPoint") or "none",
         tool_executed=result["toolExecuted"],
+        authz_outcome=tracing.authz_outcome(result["lane"], result["status"], result["reason"]),
     )

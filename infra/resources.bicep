@@ -59,6 +59,11 @@ resource budget 'Microsoft.Consumption/budgets@2023-05-01' = {
 }
 
 // ------------------------------------------------------------ Observability
+// Workbook names are deterministic GUIDs (see modules/observability.bicep), so the
+// container app can link to them without a module dependency cycle.
+var overviewWorkbookId = resourceId('Microsoft.Insights/workbooks', guid(resourceGroup().id, 'bank-manager-telemetry-workbook'))
+var answerReviewWorkbookId = resourceId('Microsoft.Insights/workbooks', guid(resourceGroup().id, 'bank-manager-answer-review-workbook'))
+
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: 'log-${token}'
   location: location
@@ -391,6 +396,13 @@ resource web 'Microsoft.App/containerApps@2025-01-01' = {
             }
             // Never export prompt/response content in GenAI telemetry.
             { name: 'OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT', value: 'false' }
+            { name: 'DEPLOYMENT_ENVIRONMENT', value: 'demo' }
+            // Public resource IDs (not secrets) for the "IDs and observability links" panel.
+            { name: 'PORTAL_ORIGIN', value: environment().portal }
+            { name: 'PORTAL_TENANT_ID', value: tenant().tenantId }
+            { name: 'APPINSIGHTS_RESOURCE_ID', value: appInsights.id }
+            { name: 'ANSWER_REVIEW_WORKBOOK_ID', value: answerReviewWorkbookId }
+            { name: 'OVERVIEW_WORKBOOK_ID', value: overviewWorkbookId }
           ]
           probes: [
             {
@@ -486,6 +498,36 @@ resource serverErrorsAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   }
 }
 
+// The workspace has a daily cap (above). When it is reached, ingestion stops
+// until the next UTC day, so tell the owner (eps-demo-observability).
+resource dailyCapAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
+  name: 'alert-log-cap-${token}'
+  location: location
+  tags: tags
+  properties: {
+    displayName: 'Log Analytics daily cap reached (${logAnalytics.name})'
+    description: 'Telemetry ingestion stopped because the 1 GB daily cap was reached. Data resumes at the next UTC day.'
+    severity: 3
+    enabled: true
+    scopes: [logAnalytics.id]
+    evaluationFrequency: 'PT1H'
+    windowSize: 'PT1H'
+    autoMitigate: false
+    criteria: {
+      allOf: [
+        {
+          query: '_LogOperation | where Category =~ "Ingestion" | where Detail has "OverQuota"'
+          timeAggregation: 'Count'
+          operator: 'GreaterThan'
+          threshold: 0
+          failingPeriods: { numberOfEvaluationPeriods: 1, minFailingPeriodsToAlert: 1 }
+        }
+      ]
+    }
+    actions: { actionGroups: [actionGroup.id] }
+  }
+}
+
 module observability 'modules/observability.bicep' = {
   name: 'observability'
   params: {
@@ -512,4 +554,7 @@ output customDomainUrl string = empty(customDomainName) ? '' : 'https://${custom
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
 output logAnalyticsWorkspaceId string = logAnalytics.id
 output workbookUrl string = observability.outputs.workbookUrl
+output answerReviewWorkbookId string = observability.outputs.answerReviewWorkbookId
+output answerReviewWorkbookUrl string = observability.outputs.answerReviewWorkbookUrl
+output appInsightsResourceId string = appInsights.id
 output dashboardUrl string = observability.outputs.dashboardUrl

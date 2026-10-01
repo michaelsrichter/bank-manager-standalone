@@ -30,14 +30,14 @@ def test_agent_harness_emits_genai_spans_with_correct_parents(tmp_path):
         assert spans[name].parent.span_id == agent.context.span_id, name
         assert spans[name].context.trace_id == agent.context.trace_id
     assert agent.attributes["gen_ai.operation.name"] == "invoke_agent"
-    assert agent.attributes["bank_manager.governed.reason"] == "account_access_denied"
+    assert agent.attributes["demo.governed.reason"] == "account_access_denied"
     chat = spans["chat gpt-4.1"]
     assert chat.attributes["gen_ai.operation.name"] == "chat"
     assert chat.attributes["gen_ai.request.model"] == "gpt-4.1"
     assert chat.attributes["gen_ai.response.model"] == "fake:gpt-4.1"
-    assert chat.attributes["bank_manager.selected_tool"] == "read_account"
+    assert chat.attributes["demo.selected_tool"] == "read_account"
     baseline_tool = spans["execute_tool read_account"]
-    assert baseline_tool.attributes["bank_manager.lane"] == "baseline"
+    assert baseline_tool.attributes["demo.lane"] == "baseline"
 
 
 def test_acs_decisions_are_recorded_on_policy_spans(tmp_path):
@@ -45,7 +45,7 @@ def test_acs_decisions_are_recorded_on_policy_spans(tmp_path):
     pre_tool = spans["acs.evaluate pre_tool_call"]
     events = [event for event in pre_tool.events if event.name == "acs.decision"]
     assert events and events[0].attributes["acs.reason_code"] == "account_access_denied"
-    assert pre_tool.attributes["bank_manager.status"] == "deny"
+    assert pre_tool.attributes["demo.status"] == "deny"
 
 
 def test_governed_tool_span_records_redaction(tmp_path):
@@ -53,9 +53,9 @@ def test_governed_tool_span_records_redaction(tmp_path):
     tool_spans = [
         s for s in SPAN_EXPORTER.get_finished_spans() if s.name.startswith("execute_tool")
     ]
-    governed = next(s for s in tool_spans if s.attributes["bank_manager.lane"] == "governed")
-    assert governed.attributes["bank_manager.status"] == "transform"
-    assert spans["invoke_agent bank-manager"].attributes["bank_manager.baseline.status"] == "allow"
+    governed = next(s for s in tool_spans if s.attributes["demo.lane"] == "governed")
+    assert governed.attributes["demo.status"] == "transform"
+    assert spans["invoke_agent bank-manager"].attributes["demo.baseline.status"] == "allow"
 
 
 def test_spans_never_contain_prompt_or_tool_output(tmp_path):
@@ -83,7 +83,7 @@ def test_metrics_include_genai_policy_and_acs_instruments(tmp_path):
     assert {
         "gen_ai.client.token.usage",
         "gen_ai.client.operation.duration",
-        "bank_manager.policy.decisions",
+        "demo.policy.decisions",
         "acs_intervention_deny_total",
         "acs_intervention_duration_ms",
     } <= names
