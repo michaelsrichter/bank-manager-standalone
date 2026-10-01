@@ -12,6 +12,8 @@ frontend/dist
 frontend/coverage
 frontend/public/docs-assets
 backend/tests
+# Practice mode answers from the recorded fixtures, so ship that one file.
+!backend/tests/fixtures/ai/intents.json
 evals
 infra
 tools

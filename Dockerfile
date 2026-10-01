@@ -53,7 +53,11 @@ RUN python -m pip install --no-cache-dir --disable-pip-version-check \
 COPY --chown=appuser:appuser config/ config/
 COPY --chown=appuser:appuser backend/bank_manager/ backend/bank_manager/
 COPY --chown=appuser:appuser backend/governance/ backend/governance/
+# Practice mode (#/demo?mode=practice) answers from these recorded intents.
+COPY --chown=appuser:appuser backend/tests/fixtures/ai/intents.json backend/tests/fixtures/ai/intents.json
 COPY --from=web-build --chown=appuser:appuser /src/frontend/dist/ frontend/dist/
+# The same build stamp as the footer; telemetry reports it as service.version.
+COPY --from=web-build --chown=appuser:appuser /src/frontend/src/generated/build-info.json frontend/src/generated/build-info.json
 USER appuser
 WORKDIR /app/backend
 EXPOSE 8000

@@ -498,6 +498,36 @@ resource serverErrorsAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   }
 }
 
+// The workspace has a daily cap (above). When it is reached, ingestion stops
+// until the next UTC day, so tell the owner (eps-demo-observability).
+resource dailyCapAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = {
+  name: 'alert-log-cap-${token}'
+  location: location
+  tags: tags
+  properties: {
+    displayName: 'Log Analytics daily cap reached (${logAnalytics.name})'
+    description: 'Telemetry ingestion stopped because the 1 GB daily cap was reached. Data resumes at the next UTC day.'
+    severity: 3
+    enabled: true
+    scopes: [logAnalytics.id]
+    evaluationFrequency: 'PT1H'
+    windowSize: 'PT1H'
+    autoMitigate: false
+    criteria: {
+      allOf: [
+        {
+          query: '_LogOperation | where Category =~ "Ingestion" | where Detail has "OverQuota"'
+          timeAggregation: 'Count'
+          operator: 'GreaterThan'
+          threshold: 0
+          failingPeriods: { numberOfEvaluationPeriods: 1, minFailingPeriodsToAlert: 1 }
+        }
+      ]
+    }
+    actions: { actionGroups: [actionGroup.id] }
+  }
+}
+
 module observability 'modules/observability.bicep' = {
   name: 'observability'
   params: {
