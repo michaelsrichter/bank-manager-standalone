@@ -20,6 +20,18 @@ if [ -z "${AZURE_BUDGET_EMAIL:-}" ]; then
   azd env set AZURE_BUDGET_EMAIL "$budget_email"
 fi
 
+# Azure cannot change a budget's start date, so pick it once and keep it. Reuse the
+# existing budget's date when there is one, otherwise the first day of this month (UTC).
+if [ -z "${AZURE_BUDGET_START_DATE:-}" ]; then
+  start=""
+  if [ -n "${RESOURCE_GROUP_NAME:-}" ]; then
+    start="$(az consumption budget show -g "$RESOURCE_GROUP_NAME" \
+      --budget-name "budget-$RESOURCE_GROUP_NAME" --query timePeriod.startDate -o tsv 2>/dev/null || true)"
+  fi
+  if [ -n "$start" ]; then start="${start:0:10}"; else start="$(date -u +%Y-%m-01)"; fi
+  azd env set AZURE_BUDGET_START_DATE "$start"
+fi
+
 # Custom domain, phase 2 (docs/operations/custom-domain.md): once the free managed
 # certificate has been issued, bind the hostname with SNI on this provision.
 domain="${AZURE_CUSTOM_DOMAIN:-}"

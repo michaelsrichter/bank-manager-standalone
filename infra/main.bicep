@@ -13,6 +13,12 @@ param location string
 @description('Monthly budget (USD) for the resource group; drives cost alerts (eps-demo-cost-security).')
 param monthlyBudgetUsd int = 50
 
+@description('Budget start date (yyyy-MM-dd, first of a month). Set once by infra/hooks/preprovision.*; Azure cannot change it later. Empty means the first of this month.')
+param budgetStartDate string = ''
+
+@description('Fallback budget start date. utcNow() is only allowed as a parameter default.')
+param budgetStartDefault string = utcNow('yyyy-MM-01')
+
 @description('Email for budget and service-health alerts (set by infra/hooks/preprovision.*, defaults to the deployer).')
 param budgetContactEmail string
 
@@ -63,6 +69,7 @@ module resources 'resources.bicep' = {
     location: location
     tags: tags
     monthlyBudgetUsd: monthlyBudgetUsd
+    budgetStartDate: empty(budgetStartDate) ? budgetStartDefault : budgetStartDate
     budgetContactEmail: budgetContactEmail
     principalId: principalId
     principalType: principalType

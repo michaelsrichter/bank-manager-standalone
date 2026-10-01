@@ -19,8 +19,8 @@ param customDomainName string = ''
 @description('True once the free managed certificate for customDomainName has been issued (set by infra/hooks/preprovision.*).')
 param customDomainCertificateReady bool = false
 
-@description('Budget start (first of month). A param so it is computed once, not re-invalidated each deploy.')
-param budgetStartDate string = utcNow('yyyy-MM-01')
+@description('Budget start (first of month). Passed from main.bicep, which keeps it stable across deploys.')
+param budgetStartDate string
 
 // Single source of truth for models: the same file the backend reads.
 var modelCatalog = loadJsonContent('../config/models.json')

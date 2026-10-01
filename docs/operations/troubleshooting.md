@@ -2,6 +2,7 @@
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| Provision fails: `Start date of budgets cannot be updated` | The budget's start date changed (for example, the first provision of a new month) | The preprovision hook now saves it once as `AZURE_BUDGET_START_DATE`. Set it to the existing budget's date, for example `azd env set AZURE_BUDGET_START_DATE 2026-09-01`, then re-run `azd provision`. |
 | Provision fails: `SubscriptionNotRegisteredForFeature ... AllowBringYourOwnPublicIpAddress` | New subscription has not enabled the feature VNet-integrated Container Apps needs | `az feature register --namespace Microsoft.Network --name AllowBringYourOwnPublicIpAddress`, `az provider register -n Microsoft.Network`, delete the failed environment, wait for deletion to finish, re-run `azd provision`. |
 | First page load takes 5–15 s | Scale-to-zero cold start | Expected. Set `minReplicas: 1` in `infra/resources.bicep` for events (adds cost). |
 | Health shows model `misconfigured` — “Identity is not authorized” | Role assignment still propagating (up to ~5 min) or missing | Wait, then check `Cognitive Services OpenAI User` on the Foundry account for `id-web-*`. |

@@ -9,6 +9,8 @@ param principalId = readEnvironmentVariable('AZURE_PRINCIPAL_ID', '')
 param principalType = readEnvironmentVariable('AZURE_PRINCIPAL_TYPE', 'User')
 param grantDeveloperAccess = toLower(readEnvironmentVariable('AZURE_GRANT_DEVELOPER_ACCESS', 'true')) == 'true'
 param monthlyBudgetUsd = int(readEnvironmentVariable('AZURE_MONTHLY_BUDGET_USD', '50'))
+// Set once by infra/hooks/preprovision.*; Azure cannot change a budget's start date.
+param budgetStartDate = readEnvironmentVariable('AZURE_BUDGET_START_DATE', '')
 // Comma-separated, e.g. "203.0.113.10". Temporary operator access only; see docs/security/threat-model.md.
 param allowedIpRules = empty(readEnvironmentVariable('AZURE_ALLOWED_IPS', ''))
   ? []
