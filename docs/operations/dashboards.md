@@ -26,6 +26,7 @@ They never show what anyone typed or what the AI answered.
 | **Portal dashboard** ("Governed AI Bank Assistant") | "What does the demo look like at a glance?" | `azd env get-value AZURE_TELEMETRY_DASHBOARD_URL` | Reader on the resource group |
 | **Application Insights** (Transaction search, Live Metrics, Failures) | "Show me every step of one trace", "Is anything failing right now?" | Link on the dashboard, or the panel | Reader (or Monitoring Reader) on the resource group |
 | **Foundry project `bank-manager` → Tracing** | "Show me the agent run as Foundry sees it" | Link on the dashboard | Azure AI User on the Foundry project, plus portal network access (see [observability](../telemetry/observability.md#foundry-portal-tracing)) |
+| **Evaluations** page (in the app) and **Foundry project → Build → Evaluations** | "Does the assistant still give the right answers and decisions?" | [/#/evaluations](/#/evaluations), or **Open in Foundry** on that page | Anyone can read results in the app. The Foundry portal needs Foundry User on the project. Starting a run needs the presenter key ([evaluations](../evaluations/README.md)) |
 
 Details of every chart and what "good" looks like are in
 [observability](../telemetry/observability.md). Every event and attribute is listed in

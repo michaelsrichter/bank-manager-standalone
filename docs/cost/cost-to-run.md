@@ -18,6 +18,7 @@ about **one-tenth of a cent per request**.
 | Azure OpenAI tokens | ~350 input + ~30 output tokens/request × 1,000 (GPT-4.1) | ~0.95 |
 | Log Analytics / App Insights | < 1 GB/month; 1 GB/day cap | 0–3 |
 | Metric alert, action group, VNet, identity | | < 0.50 |
+| Foundry Evaluations | About $0.04 per run, only when a presenter starts one (at most 10 a day) | 0–1 |
 | **Total** | | **≈ 15–20** |
 
 Per-request model cost (from [`config/models.json`](../../config/models.json)):
@@ -30,6 +31,10 @@ counts and these prices. Cached input tokens are billed at the cached rate;
 reasoning tokens are part of output and are not counted twice.
 
 Health checks never run inference, so they cost nothing.
+
+One [evaluation run](../evaluations/README.md#cost) costs about **$0.04**: 17
+answers on GPT-4.1 (≈ $0.016) and 36 judge calls on GPT-4.1 mini (≈ $0.022).
+Nothing is charged between runs; the demo does not use continuous evaluation.
 
 ## Guardrails
 

@@ -48,6 +48,7 @@ EVENTS: dict[str, frozenset[str]] = {
         {"first_event_ms", "total_ms", "outcome", "model_key", "event_count"}
     ),
     "health_check": frozenset({"component", "status", "critical"}),
+    "evaluation_run_started": frozenset({"suite", "items", "status"}),
 }
 
 LOGGER_NAME = "bank_manager.events"

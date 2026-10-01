@@ -38,6 +38,7 @@ JOURNEYS = {
     "/api/compare": "ask",
     "/api/approval": "approve",
     "/api/health": "health",
+    "/api/evaluations/runs": "evaluate",
 }
 
 _conversation_id: ContextVar[str | None] = ContextVar("conversation_id", default=None)

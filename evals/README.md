@@ -43,3 +43,18 @@ $env:AZURE_TENANT_ID = "<tenant-id>"
 Because Foundry’s public access is disabled, add your IP temporarily with
 `azd env set AZURE_ALLOWED_IPS <ip>` and `azd provision` first (see
 [local development](../docs/operations/local-dev.md)).
+
+## 3. Foundry Evaluations (real models, graded and saved in Microsoft Foundry)
+
+[`dataset/governance.jsonl`](dataset/governance.jsonl) holds 18 test questions
+with the expected tool and the expected policy decision. The web app's
+[Evaluations](../docs/evaluations/README.md) page sends them through the live
+pipeline and asks Microsoft Foundry to grade the answers with exact checks and a
+judge model. The suite (graders, judge model, limits) is in
+[`config/evaluations.json`](../config/evaluations.json).
+
+- Every row is also checked against the real policy on every CI run, for free
+  (`test_every_dataset_row_matches_the_real_policy_in_fake_mode`).
+- [`runs/example-web-run.json`](runs/example-web-run.json) is a recorded run from
+  the deployed demo. The page shows it, marked "not live", when Foundry is not
+  connected.

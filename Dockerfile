@@ -55,6 +55,9 @@ COPY --chown=appuser:appuser backend/bank_manager/ backend/bank_manager/
 COPY --chown=appuser:appuser backend/governance/ backend/governance/
 # Practice mode (#/demo?mode=practice) answers from these recorded intents.
 COPY --chown=appuser:appuser backend/tests/fixtures/ai/intents.json backend/tests/fixtures/ai/intents.json
+# Foundry Evaluations: the test questions, and a recorded run shown when Foundry is off.
+COPY --chown=appuser:appuser evals/dataset/ evals/dataset/
+COPY --chown=appuser:appuser evals/runs/ evals/runs/
 COPY --from=web-build --chown=appuser:appuser /src/frontend/dist/ frontend/dist/
 # The same build stamp as the footer; telemetry reports it as service.version.
 COPY --from=web-build --chown=appuser:appuser /src/frontend/src/generated/build-info.json frontend/src/generated/build-info.json

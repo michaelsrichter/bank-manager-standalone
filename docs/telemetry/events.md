@@ -22,6 +22,7 @@ any other key is dropped (`test_safe_properties_drops_unknown_and_complex_values
 | `rate_limited` | A 429 is returned | `scope` (ip/session), `route` | Yes |
 | `client_timing` | A streamed comparison finishes, **only after analytics opt-in** | `first_event_ms`, `total_ms`, `event_count`, `outcome`, `model_key` | Yes |
 | `health_check` | The health check refreshes (at most once a minute) | `component`, `status`, `critical` | Yes |
+| `evaluation_run_started` | A presenter starts a Foundry evaluation run | `suite`, `items`, `status` | Yes |
 
 Every event also carries the request context below, when there is one.
 
@@ -34,7 +35,7 @@ A **span** is one timed step, such as "call the AI model" or "run the policy che
 |---|---|---|
 | `gen_ai.conversation.id` | `3f2c7b1e-…` | The chat. The browser makes a random ID for each chat and sends it in the `X-Conversation-Id` header. It is not tied to a person, and **New chat** makes a new one. |
 | `demo.mode` | `live` or `practice` | Practice uses saved answers, not the AI model (`#/demo?mode=practice`). |
-| `demo.journey` | `ask`, `approve`, `health` | Which part of the demo the request belongs to. |
+| `demo.journey` | `ask`, `approve`, `health`, `evaluate` | Which part of the demo the request belongs to. `evaluate` is a presenter starting a [Foundry evaluation](../evaluations/README.md) run. |
 | `service.version` | `b54b0a4` | The Git commit, the same as the site footer. Stored as `application_Version` (`AppVersion` in Log Analytics). |
 | `deployment.environment.name` | `demo` or `local` | Keeps local runs off the demo dashboards. |
 

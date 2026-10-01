@@ -20,3 +20,5 @@ param webImageName = readEnvironmentVariable('SERVICE_WEB_IMAGE_NAME', '')
 // hook sets AZURE_CUSTOM_DOMAIN_CERT_READY once the managed certificate has been issued.
 param customDomainName = readEnvironmentVariable('AZURE_CUSTOM_DOMAIN', '')
 param customDomainCertificateReady = toLower(readEnvironmentVariable('AZURE_CUSTOM_DOMAIN_CERT_READY', 'false')) == 'true'
+// Presenter key hash for starting evaluation runs (docs/evaluations/README.md). Empty disables starting runs.
+param evaluationsPresenterKeySha256 = readEnvironmentVariable('EVALUATIONS_PRESENTER_KEY_SHA256', '')

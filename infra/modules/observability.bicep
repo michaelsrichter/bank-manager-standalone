@@ -12,6 +12,9 @@ param registryName string
 param containerAppName string
 param environmentName string
 
+@description('Foundry project for tracing and evaluations.')
+param projectName string = 'bank-manager'
+
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: logAnalyticsName
 }
@@ -49,7 +52,7 @@ resource foundryDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
 // portal "Tracing" view for the agent's OpenTelemetry GenAI spans.
 resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   parent: foundry
-  name: 'bank-manager'
+  name: projectName
   location: location
   tags: tags
   identity: { type: 'SystemAssigned' }

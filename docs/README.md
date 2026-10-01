@@ -31,6 +31,7 @@ need rules enforced by software, not just good prompts.
 | [cost/cost-to-run.md](cost/cost-to-run.md) | Monthly cost today |
 | [cost/cost-at-scale.md](cost/cost-at-scale.md) | Cost at 10x and 100x usage |
 | [presentation/README.md](presentation/README.md) | Talk slides, presenter script, two-screen mode, and QR codes |
+| [evaluations/README.md](evaluations/README.md) | Foundry Evaluations: the 18 test questions, graders, roles, cost, and how to read results |
 | [operations/deploy.md](operations/deploy.md) | Deploy with `azd up` |
 | [operations/custom-domain.md](operations/custom-domain.md) | Custom domain + free managed certificate |
 | [operations/dashboards.md](operations/dashboards.md) | Every dashboard, the question it answers, the role needed; review one answer or one chat |
@@ -80,6 +81,7 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | PR preview deploy + CD on merge | ⚠️ | `deploy.yml` is ready but inert until OIDC variables are set — [deploy](operations/deploy.md) |
 | Custom domain | ✅ | <https://bankmanager.eps-demos.site>: free Azure-managed certificate, defined in Bicep, auto-renewing — [custom domain](operations/custom-domain.md) |
 | Presentation experience (opt-in) | ✅ | Built on request: talk deck, script, presenter console, Demo Window, local QR codes — [presentation](presentation/README.md) |
+| Evaluations (opt-in) | ✅ | 18 questions graded in Microsoft Foundry (exact checks + judge model), saved runs readable on `/#/evaluations`, presenter-started runs with limits, least-privilege custom role — [evaluations](evaluations/README.md), [ADR 0013](adr/0013-foundry-evaluations-grade-the-governed-system.md) |
 | Durable server-side history | ➖ | Not needed: history stays in browser storage only |
 
 ## Architecture Decision Records
@@ -98,3 +100,4 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | [0010](adr/0010-acs-policy-engine.md) | Agent Control Specification (ACS) + OPA as the policy engine | accepted |
 | [0011](adr/0011-private-link-scope.md) | Private Link for Foundry; ACR and Monitor public with MI | accepted |
 | [0012](adr/0012-practice-mode-and-same-site-framing.md) | Practice mode and same-site framing | accepted |
+| [0013](adr/0013-foundry-evaluations-grade-the-governed-system.md) | Foundry Evaluations grade the governed system | accepted |

@@ -46,6 +46,9 @@ param customDomainName string = ''
 @description('Set by infra/hooks/preprovision.* once the managed certificate is issued.')
 param customDomainCertificateReady bool = false
 
+@description('SHA-256 (hex) of the presenter key that may start Foundry evaluation runs from the site. Set by tools/set-presenter-key.ps1; the key itself is never stored.')
+param evaluationsPresenterKeySha256 string = ''
+
 var ownerAlias = split(budgetContactEmail, '@')[0]
 
 var tags = {
@@ -78,6 +81,7 @@ module resources 'resources.bicep' = {
     webImageName: webImageName
     customDomainName: customDomainName
     customDomainCertificateReady: customDomainCertificateReady
+    evaluationsPresenterKeySha256: evaluationsPresenterKeySha256
   }
 }
 
@@ -98,4 +102,6 @@ output AZURE_ANSWER_REVIEW_WORKBOOK_ID string = resources.outputs.answerReviewWo
 output AZURE_ANSWER_REVIEW_WORKBOOK_URL string = resources.outputs.answerReviewWorkbookUrl
 output APPLICATIONINSIGHTS_RESOURCE_ID string = resources.outputs.appInsightsResourceId
 output AZURE_TENANT_ID string = tenant().tenantId
+output FOUNDRY_PROJECT_ENDPOINT string = resources.outputs.foundryProjectEndpoint
+output FOUNDRY_PROJECT_RESOURCE_ID string = resources.outputs.foundryProjectId
 output AZURE_TELEMETRY_DASHBOARD_URL string = resources.outputs.dashboardUrl

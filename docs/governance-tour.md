@@ -421,7 +421,7 @@ def validate_action(action: Mapping[str, Any]) -> dict[str, Any]:
 
 <!-- tour:snippet id="main-approval" file="backend/bank_manager/main.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L354-L375"><code>backend/bank_manager/main.py</code></a> · lines 354–375</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L407-L428"><code>backend/bank_manager/main.py</code></a> · lines 407–428</summary>
 
 ```python
 @app.post("/api/approval", openapi_extra=request_body(ApprovalRequest))

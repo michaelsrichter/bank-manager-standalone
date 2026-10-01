@@ -13,11 +13,12 @@ const TOUR_DOC = "governance-tour.md";
 
 const LINKS: {
   href: string;
-  key: "home" | "demo" | "health" | "tour" | "docs";
+  key: "home" | "demo" | "evaluations" | "health" | "tour" | "docs";
   isCurrent: (route: Route) => boolean;
 }[] = [
   { href: "#/", key: "home", isCurrent: (r) => r.page === "home" },
   { href: "#/demo", key: "demo", isCurrent: (r) => r.page === "demo" },
+  { href: "#/evaluations", key: "evaluations", isCurrent: (r) => r.page === "evaluations" },
   { href: "#/health", key: "health", isCurrent: (r) => r.page === "health" },
   {
     href: `#/docs/${TOUR_DOC}`,

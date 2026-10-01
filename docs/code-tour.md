@@ -43,7 +43,7 @@ server-side and never trusted from the request body (see the
 
 <!-- tour:snippet id="main-guard" file="backend/bank_manager/main.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L235-L251"><code>backend/bank_manager/main.py</code></a> · lines 235–251</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L288-L304"><code>backend/bank_manager/main.py</code></a> · lines 288–304</summary>
 
 ```python
 @app.middleware("http")
@@ -132,7 +132,7 @@ allow-list, so prompts, results, and account data can't leak into logs.
 
 <!-- tour:snippet id="telemetry-allowlist" file="backend/bank_manager/telemetry.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/telemetry.py#L61-L69"><code>backend/bank_manager/telemetry.py</code></a> · lines 61–69</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/telemetry.py#L62-L70"><code>backend/bank_manager/telemetry.py</code></a> · lines 62–70</summary>
 
 ```python
 def safe_properties(name: str, properties: dict[str, Any]) -> dict[str, Any]:
@@ -189,7 +189,7 @@ event (`run.started`) returns the trace ID and conversation ID, which the
 
 <!-- tour:snippet id="conversation-stamp" file="backend/bank_manager/request_context.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/request_context.py#L66-L81"><code>backend/bank_manager/request_context.py</code></a> · lines 66–81</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/request_context.py#L67-L82"><code>backend/bank_manager/request_context.py</code></a> · lines 67–82</summary>
 
 ```python
 def begin_request(path: str, conversation: str | None, demo_mode: str | None) -> None:
@@ -216,3 +216,109 @@ def stamp(span: trace.Span) -> None:
 Tests: `test_returned_trace_id_is_the_server_trace_and_every_span_has_the_conversation`,
 `test_unsafe_conversation_ids_and_modes_are_ignored`, and the frontend
 `observability-links.test.tsx`.
+
+## 8. Evaluations are graded in Foundry
+
+**What happens:** a presenter starts a run on the [Evaluations](evaluations/README.md)
+page. The API checks the presenter key and the run limits, sends all 18 test
+questions through the real pipeline, and asks Microsoft Foundry to grade the
+answers. The browser never gets a Foundry token.
+
+<!-- tour:snippet id="main-evaluations" file="backend/bank_manager/main.py" lang="python" -->
+<details open>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/main.py#L493-L554"><code>backend/bank_manager/main.py</code></a> · lines 493–554</summary>
+
+```python
+@app.get("/api/evaluations")
+async def evaluations_overview() -> JSONResponse:
+    try:
+        overview = await deps.evaluations.overview()
+    except FoundryError:
+        return problem(
+            502, "foundry_unavailable", "Microsoft Foundry did not answer. Try again."
+        )
+    return JSONResponse(overview, headers={"Cache-Control": "no-store"})
+
+@app.get("/api/evaluations/{eval_id}/runs/{run_id}")
+async def evaluation_run(eval_id: str, run_id: str) -> JSONResponse:
+    try:
+        detail = await deps.evaluations.run_detail(eval_id, run_id)
+    except ValueError:
+        return problem(
+            400, "invalid_request", "A Foundry evaluation ID and run ID are required."
+        )
+    except RunNotFound as error:
+        return problem(404, "run_not_found", str(error))
+    except EvaluationUnavailable as error:
+        return problem(503, "evaluations_unavailable", str(error))
+    except FoundryError:
+        return problem(
+            502, "foundry_unavailable", "Microsoft Foundry did not answer. Try again."
+        )
+    return JSONResponse(detail, headers={"Cache-Control": "no-store"})
+
+@app.post("/api/evaluations/runs", status_code=202)
+async def start_evaluation(request: Request) -> JSONResponse:
+    # Each run calls the AI model and a judge model, so it needs the presenter key.
+    try:
+        deps.evaluations.presenter.check(
+            request.headers.get("x-demo-presenter-key"), client_ip(request)
+        )
+    except PresenterKeyError as error:
+        headers = {"Retry-After": str(error.retry_after)} if error.retry_after else {}
+        status = 429 if error.retry_after else 403
+        return problem(status, error.code, str(error), **headers)
+    try:
+        summary = await deps.evaluations.start()
+    except RunConflict as error:
+        response = problem(409, "run_in_progress", str(error))
+        response.headers["X-Run-Id"] = error.run_id
+        return response
+    except RunLimit as error:
+        return problem(
+            429, "run_limit_reached", str(error), **{"Retry-After": str(error.retry_after)}
+        )
+    except EvaluationUnavailable as error:
+        return problem(503, "evaluations_unavailable", str(error))
+    except FoundryError:
+        return problem(
+            502, "foundry_unavailable", "Microsoft Foundry did not confirm the new run."
+        )
+    deps.sink.emit(
+        "evaluation_run_started",
+        suite=deps.evaluations.suite.suite_name,
+        items=len(deps.evaluations.suite.rows),
+        status=summary["status"],
+    )
+    return JSONResponse(summary, status_code=202, headers={"Cache-Control": "no-store"})
+```
+
+</details>
+<!-- tour:end -->
+
+Foundry can report a run as completed even when a grader could not run. So each
+question is scored here, from every **required** grader result:
+
+<!-- tour:snippet id="evaluation-score" file="backend/bank_manager/evaluations.py" lang="python" -->
+<details open>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/evaluations.py#L549-L558"><code>backend/bank_manager/evaluations.py</code></a> · lines 549–558</summary>
+
+```python
+def score_item(suite: EvaluationSuite, results: Sequence[Mapping[str, Any]]) -> str:
+    """passed: every required grader ran and passed. failed: any required grader failed.
+    not_scored: no required grader failed, but at least one did not produce a grade."""
+    by_name = {result["name"]: result for result in results}
+    required = [grader.name for grader in suite.graders if grader.required]
+    if any(by_name.get(name, {}).get("passed") is False for name in required):
+        return "failed"
+    if all(by_name.get(name, {}).get("passed") is True for name in required):
+        return "passed"
+    return "not_scored"
+```
+
+</details>
+<!-- tour:end -->
+
+Tests: `test_a_question_passes_only_when_every_required_grader_passed`,
+`test_grader_errors_reported_as_completed_are_not_grades`,
+`test_every_dataset_row_matches_the_real_policy_in_fake_mode`.

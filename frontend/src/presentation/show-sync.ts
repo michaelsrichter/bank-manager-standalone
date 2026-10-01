@@ -4,6 +4,7 @@ import { cleanPresenter, type Presenter } from "./presenter-details";
 export const appScreens = [
   { path: "/#/demo", label: "Live demo" },
   { path: "/#/demo?mode=practice", label: "Practice backup" },
+  { path: "/#/evaluations", label: "Evaluations" },
   { path: "/#/health", label: "Service status" },
   { path: "/#/docs/governance-tour.md", label: "Governance code tour" },
   { path: "/#/docs/architecture/diagram.md", label: "Architecture diagrams" },

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -145,6 +146,9 @@ class Settings:
     service_version: str = "unknown"
     environment: str = "local"
     observability: ObservabilityLinks | None = None
+    foundry_project: FoundryProject | None = None
+    presenter_key_sha256: str | None = None
+    evaluations_config_path: Path = REPO_ROOT / "config" / "evaluations.json"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -173,6 +177,11 @@ class Settings:
             ),
             environment=(values.get("DEPLOYMENT_ENVIRONMENT") or "local").strip()[:32],
             observability=ObservabilityLinks.from_env(values),
+            foundry_project=FoundryProject.from_env(values),
+            presenter_key_sha256=_sha256_hex(values.get("EVALUATIONS_PRESENTER_KEY_SHA256")),
+            evaluations_config_path=Path(
+                values.get("EVALUATIONS_CONFIG_PATH") or REPO_ROOT / "config" / "evaluations.json"
+            ),
         )
 
 
@@ -241,3 +250,81 @@ class ObservabilityLinks:
             "answerReviewWorkbookId": self.answer_review_workbook_id,
             "overviewWorkbookId": self.overview_workbook_id,
         }
+
+
+_SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+_PROJECT_ENDPOINT = re.compile(
+    r"^https://(?P<account>[a-z0-9][a-z0-9-]{1,62})\.services\.ai\.azure\.com"
+    r"/api/projects/(?P<project>[A-Za-z0-9][A-Za-z0-9_-]{0,63})/?$"
+)
+_PROJECT_RESOURCE = re.compile(
+    r"^/subscriptions/(?P<sub>[0-9a-f-]{36})/resourceGroups/(?P<rg>[\w().-]{1,90})"
+    r"/providers/Microsoft\.CognitiveServices/accounts/(?P<account>[A-Za-z0-9-]{2,64})"
+    r"/projects/(?P<project>[A-Za-z0-9_-]{1,64})$",
+    re.IGNORECASE,
+)
+
+
+def _sha256_hex(value: str | None) -> str | None:
+    """A presenter-key hash (64 lowercase hex characters). The key itself is never configured."""
+    cleaned = (value or "").strip().lower()
+    return cleaned if _SHA256_HEX.fullmatch(cleaned) else None
+
+
+@dataclass(frozen=True)
+class FoundryProject:
+    """The Foundry project that stores evaluation runs (eps-demo-evaluations).
+
+    Only set when EVALUATIONS_ENABLED=1 and both values are well formed. The
+    endpoint must be a Foundry project endpoint, so a bad setting can never send
+    the app's token to another host.
+    """
+
+    endpoint: str
+    resource_id: str
+    subscription_id: str
+    resource_group: str
+    account: str
+    project: str
+
+    @classmethod
+    def from_env(cls, values: Mapping[str, str]) -> FoundryProject | None:
+        if not _flag(values.get("EVALUATIONS_ENABLED")):
+            return None
+        endpoint = (values.get("FOUNDRY_PROJECT_ENDPOINT") or "").strip()
+        resource_id = (values.get("FOUNDRY_PROJECT_RESOURCE_ID") or "").strip()
+        endpoint_match = _PROJECT_ENDPOINT.fullmatch(endpoint)
+        resource_match = _PROJECT_RESOURCE.fullmatch(resource_id)
+        if not endpoint_match or not resource_match:
+            return None
+        if (
+            endpoint_match["account"].lower() != resource_match["account"].lower()
+            or endpoint_match["project"] != resource_match["project"]
+        ):
+            return None
+        return cls(
+            endpoint=endpoint.rstrip("/") + "/",
+            resource_id=resource_id,
+            subscription_id=resource_match["sub"],
+            resource_group=resource_match["rg"],
+            account=resource_match["account"],
+            project=resource_match["project"],
+        )
+
+    @property
+    def evaluations_api(self) -> str:
+        return self.endpoint + "openai/v1/"
+
+    @property
+    def portal_evaluations_url(self) -> str:
+        """The project's Build > Evaluations page in the Foundry portal.
+
+        The portal encodes the subscription GUID as unpadded base64url of its 16 bytes,
+        the same format Foundry uses in each run's report_url.
+        """
+        raw = bytes.fromhex(self.subscription_id.replace("-", ""))
+        subscription = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+        return (
+            f"https://ai.azure.com/nextgen/r/{subscription},{self.resource_group},,"
+            f"{self.account},{self.project}/build/evaluations"
+        )

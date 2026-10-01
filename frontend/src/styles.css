@@ -997,3 +997,302 @@ th {
   background: var(--warn-bg);
   color: var(--warn-text);
 }
+
+/* Evaluations page (eps-demo-evaluations) */
+.alert.ok {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.eval-facts-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.fact {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.fact-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.fact-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tag.required {
+  background: var(--info-bg);
+  color: var(--info-text);
+}
+
+.tag.info {
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.eval-status {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.eval-status-completed {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+.eval-status-failed,
+.eval-status-canceled {
+  background: var(--bad-bg);
+  color: var(--bad-text);
+}
+
+.eval-status-queued,
+.eval-status-in_progress,
+.eval-status-running {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.eval-runs tr[aria-current="true"] td {
+  background: var(--info-bg);
+}
+
+.eval-detail {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.grader-bars {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.grader-bar-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bar {
+  height: 0.6rem;
+  margin-top: 0.3rem;
+  border-radius: 999px;
+  background: var(--bad-bg);
+  overflow: hidden;
+}
+
+.bar-pass {
+  display: block;
+  height: 100%;
+  background: var(--governed);
+}
+
+.eval-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.eval-item {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.eval-item.verdict-passed {
+  border-left-color: var(--governed);
+}
+
+.eval-item.verdict-failed {
+  border-left-color: var(--baseline);
+}
+
+.eval-item.verdict-not_scored {
+  border-left-color: var(--warn-text);
+}
+
+.eval-item header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.verdict {
+  font-weight: 800;
+}
+
+.verdict-passed .verdict,
+.verdict.verdict-passed {
+  color: var(--ok-text);
+}
+
+.verdict.verdict-failed {
+  color: var(--bad-text);
+}
+
+.verdict.verdict-not_scored {
+  color: var(--warn-text);
+}
+
+.eval-query {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.eval-facts,
+.eval-compare {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.15rem 0.75rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.eval-facts dt,
+.compare dt {
+  color: var(--muted);
+}
+
+.eval-facts dd,
+.compare dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.compare {
+  display: contents;
+}
+
+.compare.differ dd code {
+  color: var(--bad-text);
+  font-weight: 700;
+}
+
+.eval-reply-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.eval-reply {
+  margin: 0;
+  max-height: 9rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  padding: 0.5rem;
+  background: var(--code-bg);
+  color: var(--code-text);
+  border-radius: 6px;
+}
+
+.grades {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr);
+  gap: 0.4rem;
+}
+
+.grade-mark {
+  font-weight: 800;
+  text-align: center;
+}
+
+.grade-pass .grade-mark,
+.grade-pass .grade-word {
+  color: var(--ok-text);
+}
+
+.grade-fail .grade-mark,
+.grade-fail .grade-word {
+  color: var(--bad-text);
+}
+
+.grade-error .grade-mark,
+.grade-error .grade-word {
+  color: var(--warn-text);
+}
+
+.grade-word {
+  font-weight: 700;
+}
+
+.grade-reason {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+}
+
+.eval-start-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.eval-start-form input {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 16rem;
+}
+
+.eval-start-form p {
+  flex-basis: 100%;
+  margin: 0;
+}

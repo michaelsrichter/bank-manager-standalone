@@ -22,6 +22,9 @@ param customDomainCertificateReady bool = false
 @description('Budget start (first of month). Passed from main.bicep, which keeps it stable across deploys.')
 param budgetStartDate string
 
+@description('SHA-256 (hex) of the presenter key that may start Foundry evaluation runs. Empty disables starting runs from the site. The key itself is never stored.')
+param evaluationsPresenterKeySha256 string = ''
+
 // Single source of truth for models: the same file the backend reads.
 var modelCatalog = loadJsonContent('../config/models.json')
 var modelOptions = modelCatalog.roles.intent.options
@@ -30,6 +33,8 @@ var token = uniqueString(subscription().id, resourceGroup().id)
 var placeholderImage = 'mcr.microsoft.com/k8se/quickstart:latest'
 var image = empty(webImageName) ? placeholderImage : webImageName
 var foundryName = 'ais-bank-${token}'
+// The Foundry project used for tracing and evaluations (created in modules/observability.bicep).
+var foundryProjectName = 'bank-manager'
 
 // ------------------------------------------------------------------ Budget
 resource budget 'Microsoft.Consumption/budgets@2023-05-01' = {
@@ -403,6 +408,11 @@ resource web 'Microsoft.App/containerApps@2025-01-01' = {
             { name: 'APPINSIGHTS_RESOURCE_ID', value: appInsights.id }
             { name: 'ANSWER_REVIEW_WORKBOOK_ID', value: answerReviewWorkbookId }
             { name: 'OVERVIEW_WORKBOOK_ID', value: overviewWorkbookId }
+            // Foundry Evaluations (docs/evaluations/README.md). Public endpoint and resource ID, not secrets.
+            { name: 'EVALUATIONS_ENABLED', value: '1' }
+            { name: 'FOUNDRY_PROJECT_ENDPOINT', value: 'https://${foundryName}.services.ai.azure.com/api/projects/${foundryProjectName}' }
+            { name: 'FOUNDRY_PROJECT_RESOURCE_ID', value: '${foundry.id}/projects/${foundryProjectName}' }
+            { name: 'EVALUATIONS_PRESENTER_KEY_SHA256', value: evaluationsPresenterKeySha256 }
           ]
           probes: [
             {
@@ -539,10 +549,24 @@ module observability 'modules/observability.bicep' = {
     registryName: registry.name
     containerAppName: web.name
     environmentName: tags['azd-env-name']
+    projectName: foundryProjectName
   }
   dependsOn: [deployments, foundryDnsGroup]
 }
 
+module evaluationRoles 'modules/evaluations-roles.bicep' = {
+  name: 'evaluations-roles'
+  params: {
+    foundryAccountName: foundry.name
+    projectName: observability.outputs.foundryProjectName
+    appPrincipalId: appIdentity.properties.principalId
+    developerPrincipalId: grantDeveloperAccess ? principalId : ''
+    developerPrincipalType: principalType
+  }
+}
+
+output foundryProjectEndpoint string = 'https://${foundryName}.services.ai.azure.com/api/projects/${foundryProjectName}'
+output foundryProjectId string = '${foundry.id}/projects/${foundryProjectName}'
 output containerRegistryLoginServer string = registry.properties.loginServer
 output containerAppName string = web.name
 output foundryEndpoint string = 'https://${foundryName}.openai.azure.com/'

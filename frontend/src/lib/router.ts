@@ -5,6 +5,8 @@ export type Route =
   /** `#/demo?mode=practice` opens Practice: no AI model, real policy checks. */
   | { page: "demo"; practice: boolean }
   | { page: "health" }
+  /** `#/evaluations?run=<evalId>/<runId>` opens one Foundry evaluation run. */
+  | { page: "evaluations"; run: string | null }
   | { page: "privacy" }
   | { page: "terms" }
   | { page: "docs"; doc: string };
@@ -17,6 +19,9 @@ export function parseHash(hash: string): Route {
   }
   if (path === "demo") {
     return { page: "demo", practice: new URLSearchParams(query).get("mode") === "practice" };
+  }
+  if (path === "evaluations") {
+    return { page: "evaluations", run: new URLSearchParams(query).get("run") };
   }
   if (path === "health" || path === "privacy" || path === "terms") {
     return { page: path };

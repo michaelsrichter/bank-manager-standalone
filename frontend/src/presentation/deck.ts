@@ -551,16 +551,36 @@ export const sessionDeck: Deck = {
         },
         {
           kind: "lead",
-          text: "The policy regression evaluation runs 10 scenarios: 8 violations with no rules, 0 violations when governed.",
+          text: "In CI, a free policy regression runs 10 scenarios: 8 violations with no rules, 0 when governed. In Microsoft Foundry, an 18-question evaluation grades the live model and policy together.",
+        },
+        {
+          kind: "launch",
+          text: "Show a saved Foundry evaluation run, then read one failed row.",
+          links: [{ label: "Evaluations", href: "/#/evaluations" }],
         },
       ],
       notes: {
         minutes: 3,
-        surface: "slides",
+        surface: "app",
         say: [
           "A policy is only useful if it is tested in both directions.",
           "We test what the system must do and what it must refuse.",
           "The unsafe baseline violates policy. The governed path does not.",
+          "Foundry grades every answer with exact checks and a judge model, and keeps every run.",
+        ],
+        do: [
+          "Press **D** to show **Evaluations** in the Demo Window.",
+          "Open the newest run with **See results**.",
+          "Point out **Questions passed** next to **Foundry's own totals**.",
+          "Select **Failed** and read the judge's reason out loud.",
+        ],
+        watch: [
+          "The built-in grader marks correct refusals as failures, so it does not decide pass or fail.",
+          "The judge can find a real problem: a refusal message that is correct but unclear.",
+        ],
+        fallback: [
+          "If Foundry is slow, show the newest finished run. Do not start a new run during the talk; it takes 2 to 4 minutes.",
+          "If the Evaluations page cannot load at all, say so, then switch to the **Practice** backup and show the same rules in the two lanes.",
         ],
       },
     },

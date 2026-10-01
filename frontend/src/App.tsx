@@ -17,6 +17,7 @@ import {
 import { useRoute } from "./lib/router";
 import { Skeleton } from "./components/Skeleton";
 import { HealthPage } from "./pages/HealthPage";
+import { EvaluationsPage } from "./pages/EvaluationsPage";
 import { HomePage } from "./pages/HomePage";
 import { PrivacyPage, TermsPage } from "./pages/LegalPages";
 
@@ -102,6 +103,7 @@ export function App() {
             <DemoPage practice={route.practice} key={String(route.practice)} />
           )}
           {route.page === "health" && <HealthPage />}
+          {route.page === "evaluations" && <EvaluationsPage runRef={route.run} />}
           {route.page === "docs" && (
             <Suspense fallback={<Skeleton lines={8} label="Loading documentation" />}>
               <DocsPage doc={route.doc} />

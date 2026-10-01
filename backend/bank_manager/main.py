@@ -20,7 +20,20 @@ from .bank.data import DEFAULT_PERSONA_ID, SCENARIOS, public_personas
 from .bank.governance import UnknownPersonaError, build_control, manager_snapshot
 from .bank.tools import UnsupportedToolError, validate_action
 from .comparison import resolve_approval, stream_comparison
-from .config import ConfigError, IntentRoleConfig, Settings, load_intent_config
+from .config import REPO_ROOT, ConfigError, IntentRoleConfig, Settings, load_intent_config
+from .evaluations import (
+    EvaluationService,
+    EvaluationSuite,
+    EvaluationUnavailable,
+    FoundryError,
+    FoundryEvalsHttpTransport,
+    PresenterGate,
+    PresenterKeyError,
+    RunConflict,
+    RunLimit,
+    RunNotFound,
+    generate_answers,
+)
 from .health import HealthService, ModelDeploymentProbe, PolicyEngineProbe, Probe, StaticProbe
 from .rate_limit import SlidingWindowLimiter
 from .telemetry import EventSink, LoggingEventSink, configure_telemetry
@@ -30,7 +43,8 @@ FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "ai" / "
 SESSION_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 )
-PAGES = {"home", "demo", "health", "docs", "privacy", "terms", "presentation"}
+PAGES = {"home", "demo", "health", "docs", "privacy", "terms", "presentation", "evaluations"}
+RECORDED_EVALUATION = REPO_ROOT / "evals" / "runs" / "example-web-run.json"
 
 SECURITY_HEADERS = {
     "Content-Security-Policy": (
@@ -110,6 +124,7 @@ class AppDependencies:
     health: HealthService
     limiter: SlidingWindowLimiter
     sink: EventSink
+    evaluations: EvaluationService
 
     @classmethod
     def from_settings(cls, settings: Settings) -> AppDependencies:
@@ -146,6 +161,7 @@ class AppDependencies:
             )
         )
         sink = LoggingEventSink()
+        evaluations = build_evaluations(settings, intent_config, router, control)
         return cls(
             settings=settings,
             intent_config=intent_config,
@@ -163,7 +179,44 @@ class AppDependencies:
                 per_session=settings.per_session_requests_per_minute,
             ),
             sink=sink,
+            evaluations=evaluations,
         )
+
+
+def build_evaluations(
+    settings: Settings, intent_config: IntentRoleConfig, router: IntentRouter, control: AgentControl
+) -> EvaluationService:
+    """Foundry Evaluations (eps-demo-evaluations). Live only with a Foundry project, not FAKE_AI."""
+    suite = EvaluationSuite.load(settings.evaluations_config_path, REPO_ROOT, intent_config)
+    project = None if settings.fake_ai else settings.foundry_project
+    transport = None
+    if project is not None:
+        from azure.identity import DefaultAzureCredential
+
+        credential = DefaultAzureCredential(
+            managed_identity_client_id=settings.azure_client_id,
+            exclude_interactive_browser_credential=True,
+        )
+        transport = FoundryEvalsHttpTransport(project, credential)
+
+    async def answers() -> Any:
+        return await generate_answers(
+            suite.rows,
+            router=router,
+            control=control,
+            option=intent_config.default_option,
+            concurrency=suite.max_concurrent_answers,
+        )
+
+    return EvaluationService(
+        suite,
+        project=project,
+        transport=transport,
+        answers=answers,
+        presenter=PresenterGate(settings.presenter_key_sha256),
+        app_version=settings.service_version,
+        recorded_example=RECORDED_EVALUATION,
+    )
 
 
 def emit_health(sink: EventSink, snapshot: dict[str, Any]) -> None:
@@ -435,6 +488,72 @@ def create_app(deps: AppDependencies | None = None) -> FastAPI:
                 event_count=body.eventCount,
             )
         return Response(status_code=204)
+
+    # tour:begin main-evaluations
+    @app.get("/api/evaluations")
+    async def evaluations_overview() -> JSONResponse:
+        try:
+            overview = await deps.evaluations.overview()
+        except FoundryError:
+            return problem(
+                502, "foundry_unavailable", "Microsoft Foundry did not answer. Try again."
+            )
+        return JSONResponse(overview, headers={"Cache-Control": "no-store"})
+
+    @app.get("/api/evaluations/{eval_id}/runs/{run_id}")
+    async def evaluation_run(eval_id: str, run_id: str) -> JSONResponse:
+        try:
+            detail = await deps.evaluations.run_detail(eval_id, run_id)
+        except ValueError:
+            return problem(
+                400, "invalid_request", "A Foundry evaluation ID and run ID are required."
+            )
+        except RunNotFound as error:
+            return problem(404, "run_not_found", str(error))
+        except EvaluationUnavailable as error:
+            return problem(503, "evaluations_unavailable", str(error))
+        except FoundryError:
+            return problem(
+                502, "foundry_unavailable", "Microsoft Foundry did not answer. Try again."
+            )
+        return JSONResponse(detail, headers={"Cache-Control": "no-store"})
+
+    @app.post("/api/evaluations/runs", status_code=202)
+    async def start_evaluation(request: Request) -> JSONResponse:
+        # Each run calls the AI model and a judge model, so it needs the presenter key.
+        try:
+            deps.evaluations.presenter.check(
+                request.headers.get("x-demo-presenter-key"), client_ip(request)
+            )
+        except PresenterKeyError as error:
+            headers = {"Retry-After": str(error.retry_after)} if error.retry_after else {}
+            status = 429 if error.retry_after else 403
+            return problem(status, error.code, str(error), **headers)
+        try:
+            summary = await deps.evaluations.start()
+        except RunConflict as error:
+            response = problem(409, "run_in_progress", str(error))
+            response.headers["X-Run-Id"] = error.run_id
+            return response
+        except RunLimit as error:
+            return problem(
+                429, "run_limit_reached", str(error), **{"Retry-After": str(error.retry_after)}
+            )
+        except EvaluationUnavailable as error:
+            return problem(503, "evaluations_unavailable", str(error))
+        except FoundryError:
+            return problem(
+                502, "foundry_unavailable", "Microsoft Foundry did not confirm the new run."
+            )
+        deps.sink.emit(
+            "evaluation_run_started",
+            suite=deps.evaluations.suite.suite_name,
+            items=len(deps.evaluations.suite.rows),
+            status=summary["status"],
+        )
+        return JSONResponse(summary, status_code=202, headers={"Cache-Control": "no-store"})
+
+    # tour:end main-evaluations
 
     static_dir = settings.static_dir.resolve()
 

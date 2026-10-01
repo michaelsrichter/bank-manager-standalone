@@ -28,11 +28,14 @@ acting**, especially `eps-demo-standards` first.
 | Compliance | `.github/skills/eps-demo-compliance/SKILL.md` |
 | Repo hygiene | `.github/skills/eps-demo-repo-hygiene/SKILL.md` |
 | Presentations: talk decks, scripts, two-screen presenter mode (**opt-in only**) | `.github/skills/eps-demo-presentation/SKILL.md` |
+| Foundry Evaluations: graded test suites and the Evaluations page (**opt-in only**) | `.github/skills/eps-demo-evaluations/SKILL.md` |
 
-**Opt-in skills** are used only when the user asks for them. Today that is
-`eps-demo-presentation`. **This repo has opted in**: it has a presentation
-experience (`frontend/src/presentation/`, `docs/presentation/`), so keep it working
-and apply that skill to changes and reviews of it.
+**Opt-in skills** are used only when the user asks for them. Today those are
+`eps-demo-presentation` and `eps-demo-evaluations`. **This repo has opted in to
+both**: it has a presentation experience (`frontend/src/presentation/`,
+`docs/presentation/`) and Foundry Evaluations (`/#/evaluations`,
+`backend/bank_manager/evaluations.py`, `evals/dataset/`, `docs/evaluations/`), so
+keep them working and apply those skills to changes and reviews of them.
 
 ## Repository agents
 
