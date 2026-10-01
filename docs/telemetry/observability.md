@@ -113,7 +113,9 @@ Charts need traffic to be useful. [`tools/generate-traffic.py`](../../tools/gene
 (`make traffic`) simulates anonymous visitors for about an hour. It sends page
 views, a mix of scenario and free-text requests across personas, models, and
 toggles, human approve/reject decisions, health checks, browser timing, and one
-short burst that trips the rate limiter. It calls the real models (about
+short burst that trips the rate limiter. Each simulated visitor has its own chat
+(conversation ID), and about 15% use Practice mode, so the Answer review workbook
+and the live/practice split have data. It calls the real models (about
 USD 0.15 per hour at the default pace) and stays under the rate limits apart
 from the deliberate burst. A 60-minute run was used on 2026-09-29 to populate
 the dashboards.

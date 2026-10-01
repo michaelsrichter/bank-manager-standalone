@@ -66,7 +66,13 @@ class Client:
         self.cost = 0.0
 
     def _request(
-        self, method: str, path: str, body: dict | None, session: str | None, timeout: float = 120
+        self,
+        method: str,
+        path: str,
+        body: dict | None,
+        session: str | None,
+        timeout: float = 120,
+        context: dict[str, str] | None = None,
     ):
         data = json.dumps(body).encode() if body is not None else None
         headers = {"traceparent": traceparent(), "User-Agent": "bank-manager-traffic-generator/1.0"}
@@ -74,6 +80,7 @@ class Client:
             headers["Content-Type"] = "application/json"
         if session:
             headers["X-Demo-Session"] = session
+        headers.update(context or {})
         req = urllib.request.Request(self.base + path, data=data, method=method, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as response:
@@ -94,7 +101,13 @@ class Client:
         self.stats[f"health {status}"] += 1
 
     def compare(
-        self, session: str, prompt: str, persona: str, model: str, state: dict
+        self,
+        session: str,
+        prompt: str,
+        persona: str,
+        model: str,
+        state: dict,
+        context: dict[str, str] | None = None,
     ) -> dict | None:
         started = time.perf_counter()
         status, raw = self._request(
@@ -102,6 +115,7 @@ class Client:
             "/api/compare",
             {"prompt": prompt, "personaId": persona, "modelKey": model, "policyState": state},
             session,
+            context=context,
         )
         total_ms = int((time.perf_counter() - started) * 1000)
         if status == 429:
@@ -132,12 +146,21 @@ class Client:
             self.stats[f"governed {governed['status']}"] += 1
         return governed
 
-    def approve(self, session: str, action: dict, persona: str, state: dict, decision: str) -> None:
+    def approve(
+        self,
+        session: str,
+        action: dict,
+        persona: str,
+        state: dict,
+        decision: str,
+        context: dict[str, str] | None = None,
+    ) -> None:
         status, _ = self._request(
             "POST",
             "/api/approval",
             {"action": action, "personaId": persona, "policyState": state, "decision": decision},
             session,
+            context=context,
         )
         self.stats[f"approval {decision} {status}"] += 1
 
@@ -171,18 +194,23 @@ def visitor(client: Client, pace_seconds: float) -> int:
     persona = random.choice(PERSONAS)
     model = random.choice(MODELS)
     state = random_state()
+    # One chat per visitor (gen_ai.conversation.id); some visitors rehearse in Practice mode.
+    context = {
+        "X-Conversation-Id": str(uuid.uuid4()),
+        "X-Demo-Mode": "practice" if random.random() < 0.15 else "live",
+    }
     if random.random() < 0.7:  # visitors who opted in to analytics
         client.page_view("home")
         client.page_view("demo")
     sent = 0
     for _ in range(random.randint(2, 5)):
         prompt = random.choice(PROMPTS)
-        governed = client.compare(session, prompt, persona, model, state)
+        governed = client.compare(session, prompt, persona, model, state, context)
         sent += 1
         if governed and governed["status"] == "approval" and governed.get("action"):
             time.sleep(random.uniform(2, 6))  # a person reads, then decides
             decision = "approve" if random.random() < 0.7 else "reject"
-            client.approve(session, governed["action"], persona, state, decision)
+            client.approve(session, governed["action"], persona, state, decision, context)
         time.sleep(pace_seconds * random.uniform(0.6, 1.4))
         if random.random() < 0.2:
             model = random.choice(MODELS)
