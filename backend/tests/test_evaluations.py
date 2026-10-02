@@ -32,6 +32,7 @@ from bank_manager.evaluations import (
     grader_result,
     load_dataset,
     output_item,
+    run_summary,
     run_usage,
     score_item,
 )
@@ -479,6 +480,24 @@ def test_start_respects_one_run_at_a_time_and_limits(suite, project, runs, error
 def test_a_stuck_old_run_does_not_block_new_runs(suite, project):
     runs = [{"id": RUN_ID, "status": "running", "created_at": NOW - 3 * 3600}]
     assert asyncio.run(service(suite, project, FakeFoundry(runs=runs)).start())["runId"] == RUN_ID
+
+
+def test_run_errors_use_the_code_as_well_as_the_message(suite, project):
+    summary = run_summary(
+        suite,
+        project,
+        {"id": EVAL_ID},
+        {
+            "id": RUN_ID,
+            "status": "failed",
+            "error": {
+                "code": "UnauthorizedUserAction",
+                "message": "The action cannot be finished with reason Forbidden",
+            },
+        },
+    )
+    assert summary["errorCategory"] == "network_blocked"
+    assert "Forbidden" not in summary["errorMessage"]
 
 
 # ------------------------------------------------------------- presenter key

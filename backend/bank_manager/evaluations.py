@@ -608,7 +608,8 @@ def run_summary(
     if error and not (error.get("code") or error.get("message")):
         error = None
     category, message = (
-        error_category(str(error.get("message") or error.get("code") or ""))
+        # The code (for example UnauthorizedUserAction) can matter more than the message.
+        error_category(f"{error.get('code') or ''} {error.get('message') or ''}".strip())
         if error
         else (None, None)
     )
