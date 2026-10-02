@@ -836,7 +836,7 @@ export const sessionDeck: Deck = {
           items: [
             {
               title: "Monthly",
-              text: "About USD 15-20 per month for the low-traffic demo.",
+              text: "About USD 18-23 per month for the low-traffic demo.",
               tone: "info",
             },
             { title: "GPT-4.1", text: "About USD 0.001 per request.", tone: "accent" },

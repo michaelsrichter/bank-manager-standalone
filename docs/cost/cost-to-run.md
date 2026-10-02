@@ -2,9 +2,9 @@
 
 ## In plain language
 
-Running this demo costs about **USD 15–20 per month** when a few people use it.
-Most of that is fixed networking and the container registry. The AI part costs
-about **one-tenth of a cent per request**.
+Running this demo costs about **USD 18–23 per month** when a few people use it.
+Most of that is fixed networking, the container registry, and keeping the app
+warm on weekdays. The AI part costs about **one-tenth of a cent per request**.
 
 ## Monthly estimate (eastus2, list prices, light use ≈ 1,000 requests)
 
@@ -14,12 +14,12 @@ about **one-tenth of a cent per request**.
 | Private DNS zones × 3 | $0.50/zone | 1.50 |
 | Container Registry, Basic | ~$0.167/day | 5.00 |
 | ACR Tasks builds | ~15 min/build × a few builds | < 0.50 |
-| Container Apps (Consumption, scale to zero) | Within monthly free grant (180K vCPU-s, 360K GiB-s, 2M requests) | 0–2 |
+| Container Apps (Consumption) | One idle replica Mon–Fri 8 AM–8 PM ET (~264 h) at $0.000003 per vCPU-s and GiB-s, after the free grant (180K vCPU-s, 360K GiB-s, 2M requests); scale to zero otherwise ([ADR 0015](../adr/0015-weekday-warm-hours.md)) | ~3–4 |
 | Azure OpenAI tokens | ~350 input + ~30 output tokens/request × 1,000 (GPT-4.1) | ~0.95 |
 | Log Analytics / App Insights | < 1 GB/month; 1 GB/day cap | 0–3 |
 | Metric alert, action group, VNet, identity | | < 0.50 |
 | Foundry Evaluations | About $0.04 per run, only when a presenter starts one (at most 10 a day) | 0–1 |
-| **Total** | | **≈ 15–20** |
+| **Total** | | **≈ 18–23** |
 
 Per-request model cost (from [`config/models.json`](../../config/models.json)):
 
@@ -41,7 +41,9 @@ Nothing is charged between runs; the demo does not use continuous evaluation.
 - Budget: USD 50/month (`AZURE_MONTHLY_BUDGET_USD`), email at 80% actual and
   100% forecast.
 - Hard caps: 30K TPM per deployment, max 2 replicas, rate limits, 200 max output tokens.
-- Scale to zero when idle (first request after idle takes a few seconds).
+- Warm on weekdays, 8 AM–8 PM US Eastern; scale to zero otherwise. The first
+  request after a quiet spell outside those hours takes about 30 seconds.
+  Turn the warm hours off with `WARM_HOURS_ENABLED=false`.
 
 ## Pricing references
 

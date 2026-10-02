@@ -103,3 +103,4 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | [0012](adr/0012-practice-mode-and-same-site-framing.md) | Practice mode and same-site framing | accepted |
 | [0013](adr/0013-foundry-evaluations-grade-the-governed-system.md) | Foundry Evaluations grade the governed system | accepted |
 | [0014](adr/0014-foundry-public-endpoint-for-evaluations.md) | Foundry public endpoint (Entra ID only) for evaluations | accepted; supersedes part of 0011 |
+| [0015](adr/0015-weekday-warm-hours.md) | Keep one replica warm on weekday working hours | accepted |

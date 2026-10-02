@@ -24,3 +24,5 @@ param customDomainCertificateReady = toLower(readEnvironmentVariable('AZURE_CUST
 param evaluationsPresenterKeySha256 = readEnvironmentVariable('EVALUATIONS_PRESENTER_KEY_SHA256', '')
 // Foundry Evaluations on/off (docs/adr/0014-foundry-public-endpoint-for-evaluations.md).
 param evaluationsEnabled = toLower(readEnvironmentVariable('EVALUATIONS_ENABLED', 'true')) != 'false'
+// Keep one replica warm on weekdays, 8 AM–8 PM US Eastern (docs/adr/0015-weekday-warm-hours.md).
+param warmHoursEnabled = toLower(readEnvironmentVariable('WARM_HOURS_ENABLED', 'true')) != 'false'

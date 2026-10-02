@@ -28,6 +28,27 @@ param evaluationsPresenterKeySha256 string = ''
 @description('Turn on Foundry Evaluations. Foundry grades runs from its own service, which needs the Foundry account to accept public (Entra-only) traffic. Set false to keep the account private-endpoint only; see docs/adr/0014-foundry-public-endpoint-for-evaluations.md.')
 param evaluationsEnabled bool = true
 
+@description('Keep one replica running on weekdays, 8 AM to 8 PM US Eastern, so visitors do not wait for a cold start. Outside those hours the app still scales to zero. See docs/adr/0015-weekday-warm-hours.md.')
+param warmHoursEnabled bool = true
+
+var httpScaleRule = {
+  name: 'http'
+  http: { metadata: { concurrentRequests: '20' } }
+}
+// KEDA cron scaler: holds one replica during the window. The HTTP rule can still add a second.
+var warmHoursRule = {
+  name: 'weekday-warm-hours'
+  custom: {
+    type: 'cron'
+    metadata: {
+      timezone: 'America/New_York'
+      start: '0 8 * * 1-5'
+      end: '0 20 * * 1-5'
+      desiredReplicas: '1'
+    }
+  }
+}
+
 // Single source of truth for models: the same file the backend reads.
 var modelCatalog = loadJsonContent('../config/models.json')
 var modelOptions = modelCatalog.roles.intent.options
@@ -439,15 +460,10 @@ resource web 'Microsoft.App/containerApps@2025-01-01' = {
         }
       ]
       scale: {
-        // Scale to zero when idle (eps-demo-cost-security).
+        // Scale to zero when idle (eps-demo-cost-security). Optional weekday warm hours (ADR 0015).
         minReplicas: 0
         maxReplicas: 2
-        rules: [
-          {
-            name: 'http'
-            http: { metadata: { concurrentRequests: '20' } }
-          }
-        ]
+        rules: warmHoursEnabled ? [httpScaleRule, warmHoursRule] : [httpScaleRule]
       }
     }
   }

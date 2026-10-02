@@ -52,6 +52,9 @@ param evaluationsPresenterKeySha256 string = ''
 @description('Turn on Foundry Evaluations. Needs the Foundry account to accept public (Entra-only) traffic; see docs/adr/0014-foundry-public-endpoint-for-evaluations.md.')
 param evaluationsEnabled bool = true
 
+@description('Keep one replica running on weekdays, 8 AM to 8 PM US Eastern, so visitors do not wait for a cold start. About USD 3/month. Outside those hours the app still scales to zero. See docs/adr/0015-weekday-warm-hours.md.')
+param warmHoursEnabled bool = true
+
 var ownerAlias = split(budgetContactEmail, '@')[0]
 
 var tags = {
@@ -86,6 +89,7 @@ module resources 'resources.bicep' = {
     customDomainCertificateReady: customDomainCertificateReady
     evaluationsPresenterKeySha256: evaluationsPresenterKeySha256
     evaluationsEnabled: evaluationsEnabled
+    warmHoursEnabled: warmHoursEnabled
   }
 }
 
