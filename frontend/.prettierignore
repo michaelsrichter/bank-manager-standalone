@@ -1,4 +1,5 @@
 dist
 coverage
 src/generated
+src/presentation/snippets.generated.json
 package-lock.json

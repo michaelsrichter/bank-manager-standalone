@@ -249,12 +249,14 @@ class SpanEventTelemetrySink:
             return
         decision = getattr(event.decision, "value", event.decision)
         point = getattr(event.intervention_point, "value", event.intervention_point)
+        # tour:begin slide-acs-span-event
         attributes: dict[str, Any] = {
             "acs.event_type": getattr(event.event_type, "value", str(event.event_type)),
             "acs.intervention_point": str(point),
             "acs.decision": str(decision or "none"),
             "acs.reason_code": event.reason_code or "none",
         }
+        # tour:end slide-acs-span-event
         if event.policy_id:
             attributes["acs.policy_id"] = event.policy_id
         if event.duration_ms is not None:

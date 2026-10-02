@@ -50,17 +50,17 @@ exactly which governance code is running, and nobody can quietly swap it.
 
 <!-- tour:snippet id="dockerfile-acs-build" file="Dockerfile" lang="dockerfile" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/Dockerfile#L6-L30"><code>Dockerfile</code></a> · lines 6–30</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/Dockerfile#L6-L32"><code>Dockerfile</code></a> · lines 6–32</summary>
 
 ```dockerfile
 FROM python:3.12-slim AS acs-build
-ARG AGT_COMMIT=c07577d9785d4f64225a7b367cb2a978e9fc784d
 WORKDIR /build
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential curl git pkg-config ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
+ARG AGT_COMMIT=c07577d9785d4f64225a7b367cb2a978e9fc784d
 RUN git clone --filter=blob:none https://github.com/microsoft/agent-governance-toolkit.git agt \
     && git -C agt checkout "${AGT_COMMIT}" \
     && git -C agt rev-parse HEAD | grep -Fx "${AGT_COMMIT}" \
@@ -148,7 +148,7 @@ extras are plugged in:
 
 <!-- tour:snippet id="governance-build-control" file="backend/bank_manager/bank/governance.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/bank/governance.py#L31-L57"><code>backend/bank_manager/bank/governance.py</code></a> · lines 31–57</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/bank/governance.py#L31-L58"><code>backend/bank_manager/bank/governance.py</code></a> · lines 31–58</summary>
 
 ```python
 class HostAnnotators:
@@ -192,7 +192,7 @@ they may touch, and whether restricted mode is on. The server builds this
 
 <!-- tour:snippet id="governance-snapshot" file="backend/bank_manager/bank/governance.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/bank/governance.py#L64-L83"><code>backend/bank_manager/bank/governance.py</code></a> · lines 64–83</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/bank/governance.py#L66-L85"><code>backend/bank_manager/bank/governance.py</code></a> · lines 66–85</summary>
 
 ```python
 def manager_snapshot(
@@ -309,7 +309,7 @@ Approve/Reject instead of running the tool. `deny` is enforced with
 
 <!-- tour:snippet id="governance-evaluate-action" file="backend/bank_manager/bank/governance.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/bank/governance.py#L106-L124"><code>backend/bank_manager/bank/governance.py</code></a> · lines 106–124</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/bank/governance.py#L108-L126"><code>backend/bank_manager/bank/governance.py</code></a> · lines 108–126</summary>
 
 ```python
 async def evaluate_action(
@@ -346,7 +346,7 @@ check ③ on the result.
 
 <!-- tour:snippet id="governance-run-action" file="backend/bank_manager/bank/governance.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/bank/governance.py#L131-L158"><code>backend/bank_manager/bank/governance.py</code></a> · lines 131–158</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/bank/governance.py#L133-L162"><code>backend/bank_manager/bank/governance.py</code></a> · lines 133–162</summary>
 
 ```python
 async def run_action(
@@ -585,7 +585,7 @@ healthy **only if** the exact expected denial comes back.
 
 <!-- tour:snippet id="tracing-acs-sink" file="backend/bank_manager/tracing.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/tracing.py#L243-L266"><code>backend/bank_manager/tracing.py</code></a> · lines 243–266</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/tracing.py#L243-L268"><code>backend/bank_manager/tracing.py</code></a> · lines 243–268</summary>
 
 ```python
 class SpanEventTelemetrySink:

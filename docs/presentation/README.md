@@ -10,9 +10,32 @@ This folder explains the opt-in presentation routes for the Governed AI Bank Ass
 
 The session is for architects and technical decision makers who are building multi-agent solutions. The planned talk time is 44 minutes. Questions happen after the talk.
 
-The flow is: the trust question → a normal governed run → Microsoft Foundry evaluators (flash the list, then show real results) → how ACS, ASSERT, and the Agent Governance Toolkit fit together → breaking the rules on purpose → evidence in Azure Monitor. The deck does not use a separate trust dashboard.
+The flow is: the trust question → the stack → a normal governed run → Microsoft Foundry evaluators (flash the list, then show real results) → how ACS, ASSERT, and the Agent Governance Toolkit fit together, with ASSERT's real config → breaking the rules on purpose → the three checks and the ACS code → observability (why it matters, how it works, the tracing code, then tracing the $60,000 answer live in Azure Monitor) → trust and cost → how to start. The deck does not use a separate trust dashboard.
 
 Every product named in the talk, with links, is in [product-links.md](product-links.md).
+
+## Code on slides
+
+Code slides show **real source lines**, never copies. Mark a region in any source file under `backend/`, `evals/`, `frontend/src/`, `infra/`, `config/`, or the `Dockerfile`:
+
+```python
+# tour:begin slide-acs-run-tool
+...code...
+# tour:end slide-acs-run-tool
+```
+
+Use `//` instead of `#` in TypeScript. Then run `npm run tour:sync` in `frontend/`. It writes `frontend/src/presentation/snippets.generated.json` with highlighted code, the file, the line numbers, and a GitHub link to those exact lines. Reference it in `deck.ts` with `{ kind: "snippet", items: [{ id: "slide-acs-run-tool", caption: "..." }] }`. Every snippet shows a **GitHub · file · lines** link, so a technical audience can find the code later. The docs build fails if the JSON is stale, and a test fails if a slide names a snippet that does not exist.
+
+## Observability in the talk
+
+Four slides cover observability. The speaker notes are the script:
+
+1. **Why observability matters for agents:** find problems fast, prove every decision, catch trouble early, all without logging private data.
+2. **How it works:** one Trace ID from the browser through `invoke_agent`, the model call, each ACS check, and each tool, sent with OpenTelemetry and managed identity to Application Insights, Azure Monitor metrics, and Log Analytics.
+3. **Tracing in code:** the ACS telemetry sink and the Logs query behind **This answer in Logs**, with GitHub links.
+4. **Trace an answer in Azure Monitor (live):** open the $60,000 answer from Live 3, then **IDs and observability links** → **This answer in Logs**. Read the steps and the Decision column: `denied_expected` is the policy working; `denied_unexpected` is the engine failing closed and is the one to investigate. The governed lane has no `execute_tool` step. Then show the **Answer review** workbook (paste the Conversation ID) and the **telemetry** workbook sections 4 and 7.
+
+Telemetry takes 2 to 5 minutes to arrive, so the live step traces an answer from earlier in the talk. Ask one question about 10 minutes before the talk as a backup trace. Details: [observability](../telemetry/observability.md).
 
 ## Presenting on one screen
 

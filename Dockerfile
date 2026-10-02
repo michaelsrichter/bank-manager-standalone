@@ -4,17 +4,19 @@
 
 # tour:begin dockerfile-acs-build
 FROM python:3.12-slim AS acs-build
-ARG AGT_COMMIT=c07577d9785d4f64225a7b367cb2a978e9fc784d
 WORKDIR /build
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential curl git pkg-config ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
+# tour:begin slide-agt-wheel
+ARG AGT_COMMIT=c07577d9785d4f64225a7b367cb2a978e9fc784d
 RUN git clone --filter=blob:none https://github.com/microsoft/agent-governance-toolkit.git agt \
     && git -C agt checkout "${AGT_COMMIT}" \
     && git -C agt rev-parse HEAD | grep -Fx "${AGT_COMMIT}" \
     && python -m pip wheel --no-cache-dir --no-deps --wheel-dir /wheels ./agt/policy-engine/sdk/python
+# tour:end slide-agt-wheel
 
 FROM debian:bookworm-slim AS opa-build
 ARG OPA_VERSION=v1.21.0

@@ -7,7 +7,7 @@ import { dirname, posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Marked } from "marked";
 import { highlightCode } from "./highlight.mjs";
-import { syncTours } from "./tour.mjs";
+import { syncSlideSnippets, syncTours } from "./tour.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../..");
@@ -30,7 +30,9 @@ function walk(dir) {
 const files = walk(docsRoot).filter((file) => file.endsWith(".md"));
 const toKey = (file) => relative(docsRoot, file).split(sep).join("/");
 const keys = new Set(files.map(toKey));
-const problems = containerBuild ? [] : syncTours({ repoUrl });
+const problems = containerBuild
+  ? []
+  : [...syncTours({ repoUrl }), ...syncSlideSnippets({ repoUrl })];
 const pages = {};
 
 for (const file of files) {

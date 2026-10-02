@@ -166,6 +166,83 @@
 .slide-blocks tbody td:first-child {
   font-weight: 700;
 }
+.slide-flow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1.5rem;
+  align-items: stretch;
+}
+.flow-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+}
+.flow-step h3,
+.flow-step p {
+  margin: 0;
+}
+.flow-step h3 {
+  font-size: 1.05rem;
+}
+.flow-step:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  right: -1.3rem;
+  top: 0.9rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.flow-check {
+  border: 2px solid var(--brand);
+  background: var(--surface-2);
+}
+.flow-outcomes {
+  list-style: none;
+  margin: auto 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.flow-outcome {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.92rem;
+}
+.slide-snippets {
+  display: grid;
+  gap: 1rem;
+}
+.slide-snippets.count-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.slide-snippet {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.slide-snippet figcaption {
+  font-weight: 700;
+}
+.slide-snippet pre {
+  margin: 0;
+}
+.snippet-source {
+  font-size: 0.85rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
 .slide-code pre {
   max-height: 380px;
   overflow: auto;
@@ -318,6 +395,22 @@
 .fit-stage .slide-code pre {
   max-height: none;
   font-size: 1.15rem;
+}
+.fit-stage .slide-snippets.count-2 pre {
+  font-size: 1rem;
+}
+.fit-stage .slide-snippet figcaption,
+.fit-stage .snippet-source {
+  font-size: 1.05rem;
+}
+.fit-stage .flow-step h3 {
+  font-size: 1.4rem;
+}
+.fit-stage .flow-step p {
+  font-size: 1.15rem;
+}
+.fit-stage .flow-outcome {
+  font-size: 1.05rem;
 }
 .fit-stage .slide-frame footer {
   font-size: 1rem;

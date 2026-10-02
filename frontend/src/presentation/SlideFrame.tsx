@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { demoQrPath, publicDemoUrl } from "./constants";
+import { demoQrPath, publicDemoUrl, repoUrl } from "./constants";
 import type { Deck, Slide, SlideBlock, Tone } from "./deck";
 import { useLocalQr } from "./local-qr";
 import { eventDateLabel, hasPresenterDetails, type Presenter } from "./presenter-details";
 import { Rich } from "./rich-text";
+import { slideSnippet } from "./snippets";
 
 function toneClass(tone?: Tone) {
   return tone ? ` tone-${tone}` : "";
@@ -172,6 +173,54 @@ function Block({ block, presenter }: { block: SlideBlock; presenter: Presenter }
           <figcaption>{block.caption}</figcaption>
         </figure>
       );
+    case "flow":
+      return (
+        <ol className="slide-flow" aria-label={block.label}>
+          {block.items.map((step) => (
+            <li
+              className={`flow-step${step.check ? " flow-check" : ""}${toneClass(step.tone)}`}
+              key={step.title}
+            >
+              <h3>{step.title}</h3>
+              <p>
+                <Rich text={step.text} />
+              </p>
+              {step.outcomes && (
+                <ul className="flow-outcomes">
+                  {step.outcomes.map((outcome) => (
+                    <li className={`flow-outcome${toneClass(outcome.tone)}`} key={outcome.label}>
+                      <strong>{outcome.label}</strong> <Rich text={outcome.text} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ol>
+      );
+    case "snippet":
+      return (
+        <div className={`slide-snippets count-${block.items.length}`}>
+          {block.items.map((item) => {
+            const snippet = slideSnippet(item.id);
+            return (
+              <figure className="slide-code slide-snippet" key={item.id}>
+                <figcaption>{item.caption}</figcaption>
+                {/* Build-time highlight.js HTML from this repository's own source. */}
+                <div dangerouslySetInnerHTML={{ __html: snippet.html }} />
+                <a
+                  className="snippet-source"
+                  href={snippet.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  GitHub · {snippet.file} · lines {snippet.first}–{snippet.last}
+                </a>
+              </figure>
+            );
+          })}
+        </div>
+      );
     case "code":
       return (
         <figure className="slide-code">
@@ -179,6 +228,16 @@ function Block({ block, presenter }: { block: SlideBlock; presenter: Presenter }
           <pre>
             <code>{block.code}</code>
           </pre>
+          {block.source && (
+            <a
+              className="snippet-source"
+              href={`${repoUrl}/blob/main/${block.source}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub · {block.source}
+            </a>
+          )}
         </figure>
       );
     case "launch":

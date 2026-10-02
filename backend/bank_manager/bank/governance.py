@@ -49,12 +49,14 @@ class HostAnnotators:
 
 
 def build_control(manifest: Path = MANIFEST) -> AgentControl:
+    # tour:begin slide-acs-control
     return AgentControl.from_path(
         str(manifest),
         annotator_dispatcher=HostAnnotators(),
         # acs_intervention_* OTel metrics + decision events on the active span.
         telemetry_sink=[OtelMetricsTelemetrySink(), SpanEventTelemetrySink()],
     )
+    # tour:end slide-acs-control
 
 
 # tour:end governance-build-control
@@ -140,6 +142,7 @@ async def run_action(
             return ApprovalResolution.allow(result.action_identity)
         return ApprovalResolution.deny("The operator rejected the approval request.")
 
+    # tour:begin slide-acs-run-tool
     try:
         result = await control.run_tool(
             action["tool_name"],
@@ -150,6 +153,7 @@ async def run_action(
         )
     except AgentControlBlocked as blocked:
         return outcome("deny", blocked.result.verdict.reason, blocked.result.verdict.message)
+    # tour:end slide-acs-run-tool
 
     post_result = result.post_tool_call_result
     transformed = (

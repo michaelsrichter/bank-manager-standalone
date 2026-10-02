@@ -58,6 +58,7 @@ export function windowAround(
 /** Every step of one answer, in order. Paste into Logs on the Application Insights resource. */
 export function answerStepsKql(traceId: string): string {
   return [
+    // tour:begin slide-answer-kql
     `let traceId = "${requireTraceId(traceId)}";`,
     "union requests, dependencies, traces, exceptions, customEvents",
     "| where operation_Id == traceId",
@@ -65,6 +66,7 @@ export function answerStepsKql(traceId: string): string {
     '| extend Decision = tostring(customDimensions["demo.authz.outcome"])',
     "| project timestamp, Kind = itemType, Service = cloud_RoleName, Step, Seconds, Succeeded = success, Code = resultCode, Decision, SpanId = id, ParentId = operation_ParentId",
     "| order by timestamp asc",
+    // tour:end slide-answer-kql
   ].join("\n");
 }
 

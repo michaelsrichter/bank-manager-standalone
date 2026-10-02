@@ -1,11 +1,12 @@
 import "@testing-library/jest-dom/vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import QRCode from "qrcode";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { publicDemoUrl } from "./constants";
+import { publicDemoUrl, repoUrl } from "./constants";
 import { sessionDeck, totalMinutes } from "./deck";
+import { slideSnippet, slideSnippets } from "./snippets";
 import DemoWindow from "./DemoWindow";
 import PresenterConsole, { outsideLinksForSlide, surfaceLabels } from "./PresenterConsole";
 import {
@@ -103,6 +104,13 @@ describe("presentation content", () => {
             expect(link.href.startsWith("https://") || allowed.has(link.href), link.href).toBe(
               true,
             );
+        if (block.kind === "snippet")
+          for (const item of block.items) {
+            const snippet = slideSnippets[item.id];
+            expect(snippet, item.id).toBeDefined();
+            expect(snippet.href.startsWith(`${repoUrl}/blob/main/${snippet.file}#L`)).toBe(true);
+            expect(existsSync(`../${snippet.file}`), snippet.file).toBe(true);
+          }
         if (block.kind === "code" && block.source) {
           const source = normalize(readFileSync(`../${block.source}`, "utf8"));
           // "# ..." lines mark skipped rules; every other line must appear, in order.
@@ -116,6 +124,37 @@ describe("presentation content", () => {
         }
       }
     }
+  });
+
+  it("renders real source snippets with GitHub line links, and the three-checks flow", () => {
+    const at = (id: string) => sessionDeck.slides.findIndex((slide) => slide.id === id);
+    const { rerender } = render(
+      <SlideFrame
+        deck={sessionDeck}
+        slide={sessionDeck.slides[at("acs-run-tool")]}
+        index={at("acs-run-tool")}
+        presenter={emptyPresenter}
+      />,
+    );
+    const link = screen.getByRole("link", {
+      name: /GitHub · backend\/bank_manager\/bank\/governance\.py/,
+    });
+    expect(link).toHaveAttribute("href", slideSnippet("slide-acs-run-tool").href);
+    expect(document.querySelector(".slide-snippet code.hljs")?.textContent).toContain("run_tool");
+    expect(() => slideSnippet("slide-missing")).toThrow("tour:begin slide-missing");
+    rerender(
+      <SlideFrame
+        deck={sessionDeck}
+        slide={sessionDeck.slides[at("three-checks")]}
+        index={at("three-checks")}
+        presenter={emptyPresenter}
+      />,
+    );
+    expect(screen.getByRole("list", { name: /three ACS checks/ })).toBeInTheDocument();
+    expect(screen.getByText("② pre_tool_call")).toBeInTheDocument();
+    expect(document.querySelector(".flow-check code, .flow-step code")?.textContent).toBe(
+      "prepare_transfer",
+    );
   });
 
   it("keeps the committed demo QR code in sync with the configured address", async () => {
@@ -163,7 +202,7 @@ describe("slides and script pages", () => {
     window.history.pushState(null, "", "/presentation/session#problem");
     const user = userEvent.setup();
     render(<SlidesPage deck={sessionDeck} presenter={emptyPresenter} onSavePresenter={vi.fn()} />);
-    expect(screen.getByText(/3 \/ 22: Problem/)).toBeInTheDocument();
+    expect(screen.getByText(/4 \/ 28: Problem/)).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
     expect(window.location.hash).toBe("#model-policy");
     await user.keyboard("n");
@@ -250,7 +289,7 @@ describe("two-screen mode", () => {
     view.rerender(both("light"));
     await waitFor(() => expect(onThemeChange).toHaveBeenLastCalledWith("light"));
     expect(document.documentElement.dataset.theme).toBe("light");
-    await userEvent.click(screen.getByRole("button", { name: /^6 Meet demo/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^7 Meet demo/ }));
     await userEvent.click(screen.getByRole("button", { name: /Show Live demo/ }));
     await waitFor(() => expect(screen.getByTitle("Live demo (live site)")).toBeInTheDocument());
     expect(screen.getByTitle("Live demo (live site)")).toHaveAttribute("src", "/#/demo");

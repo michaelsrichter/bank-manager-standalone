@@ -62,7 +62,10 @@ export function ScriptPage({
             Practice backup: <a href="/#/demo?mode=practice">Practice mode</a>.
           </li>
           <li>
-            Azure portal workbooks and dashboard in their own windows. Sign in before the audience
+            Azure portal, in its own signed-in window: the{" "}
+            <strong>Governed AI Bank Assistant — telemetry</strong> workbook, the{" "}
+            <strong>answer review</strong> workbook, the <strong>Governed AI Bank Assistant</strong>{" "}
+            dashboard, and Application Insights <strong>Logs</strong>. Sign in before the audience
             joins.
           </li>
         </ul>
