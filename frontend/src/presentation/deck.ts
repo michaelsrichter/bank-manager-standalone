@@ -462,7 +462,7 @@ export const sessionDeck: Deck = {
     {
       id: "agt-family",
       chip: "AGT family",
-      title: "ACS, ASSERT, and the Agent Governance Toolkit",
+      title: "How ACS, ASSERT, and AGT fit together",
       blocks: [
         {
           kind: "table",

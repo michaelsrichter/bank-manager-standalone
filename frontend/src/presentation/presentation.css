@@ -154,6 +154,18 @@
   padding: 0.55rem 1rem;
   font-weight: 700;
 }
+.slide-blocks table {
+  width: 100%;
+}
+.slide-blocks caption {
+  caption-side: top;
+  text-align: left;
+  color: var(--muted);
+  padding-bottom: 0.5rem;
+}
+.slide-blocks tbody td:first-child {
+  font-weight: 700;
+}
 .slide-code pre {
   max-height: 380px;
   overflow: auto;
@@ -298,6 +310,10 @@
 }
 .fit-stage .slide-chain span {
   font-size: 1.35rem;
+}
+.fit-stage .slide-blocks table,
+.fit-stage .slide-blocks caption {
+  font-size: 1.25rem;
 }
 .fit-stage .slide-code pre {
   max-height: none;
