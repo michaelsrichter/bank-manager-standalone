@@ -86,7 +86,7 @@ often Private Link) and how it'll be documented.
    once for the app's managed identity and once for the developer principal,
    so the two grants can never drift (`eps-demo-architecture`). Keep Private
    Link opt-in by default unless the demo needs it from day one
-   (`docs/adr/0003`). If AI is involved, provision AI Foundry, flip on the
+   (`docs/adr/0003`). If AI is involved, provision Microsoft Foundry, flip on the
    matching config in `config/models.json`, and add its own RBAC pair the
    same way.
 3. `backend/` — build the API. Dependency-inject every external call

@@ -1,7 +1,7 @@
 """OpenTelemetry instrumentation for the agent harness (eps-demo-production-readiness).
 
 Spans follow the OpenTelemetry GenAI semantic conventions so Azure Monitor and
-the Azure AI Foundry tracing view can render them:
+the Microsoft Foundry tracing view can render them:
 
 - ``invoke_agent bank-manager``: one comparison run (root of the agent work)
 - ``chat <deployment>``: the model call that picks a tool (``gen_ai.*`` usage)

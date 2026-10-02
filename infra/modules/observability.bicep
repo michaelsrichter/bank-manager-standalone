@@ -228,7 +228,7 @@ func metricTile(x int, y int, w int, title string, resourceId string, metrics ar
 var markdown = join(
   [
     '### Governed AI Bank Assistant — observability'
-    '**For demo purposes only.** OpenTelemetry from the app, agent harness, ACS policy engine, Azure AI Foundry, and Container Apps.'
+    '**For demo purposes only.** OpenTelemetry from the app, agent harness, ACS policy engine, Microsoft Foundry, and Container Apps.'
     ''
     '- [Open the detailed workbook](${workbookBlade})'
     '- [Review one answer or one chat](${answerReviewBlade})'

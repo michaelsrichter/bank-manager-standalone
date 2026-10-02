@@ -122,7 +122,9 @@ export const sessionDeck: Deck = {
             { title: "Problem", text: "AI can choose tools and take actions." },
             { title: "Pattern", text: "The model proposes. Policy decides." },
             { title: "Demo", text: "Two lanes show unsafe and governed behavior." },
-            { title: "Evidence", text: "Tests and portal traces show what happened." },
+            { title: "Evaluate", text: "Microsoft Foundry grades the answers." },
+            { title: "Govern", text: "ACS, ASSERT, and the toolkit, then we break the rules." },
+            { title: "Evidence", text: "Portal traces show what happened." },
             { title: "Start", text: "How to use the pattern in your own agent." },
           ],
         },
@@ -207,23 +209,23 @@ export const sessionDeck: Deck = {
       blocks: [
         {
           kind: "table",
-          caption: "A trust platform combines a dashboard with policy-driven governance.",
+          caption: "Each layer answers a different question. No single layer is enough.",
           headers: ["Layer", "Question it answers", "Role in the demo"],
           rows: [
             [
-              "Foundry evaluators",
-              "Is the answer good, safe, and grounded?",
-              "Quality evidence; not wired into this app.",
+              "Microsoft Foundry evaluators",
+              "Is each answer correct, safe, and on task?",
+              "18 graded questions, run from the Evaluations page.",
             ],
             [
-              "ASSERT",
-              "Does the agent still meet its written spec?",
-              "Positive and negative regression tests.",
-            ],
-            [
-              "ACS / Agent Governance Toolkit",
+              "Agent Governance Toolkit: ACS",
               "Is this person allowed to do this operation now?",
               "Runtime policy enforcement with OPA and Rego.",
+            ],
+            [
+              "Agent Governance Toolkit family: ASSERT",
+              "Does the agent still meet its written rules?",
+              "Red-team comparison of the no-rules and governed lanes.",
             ],
             [
               "Observability",
@@ -234,12 +236,13 @@ export const sessionDeck: Deck = {
         },
       ],
       notes: {
-        minutes: 3,
+        minutes: 2,
         surface: "slides",
         say: [
           "Governance is not only refusal.",
           "It means reliably doing what is allowed and reliably not doing what is not allowed.",
-          "That needs quality checks, regression tests, runtime enforcement, and evidence.",
+          "That needs quality checks, runtime enforcement, regression tests, and evidence.",
+          "We will see each layer live, in that order.",
         ],
       },
     },
@@ -329,6 +332,206 @@ export const sessionDeck: Deck = {
           "The governed lane shows **[SSN-REDACTED]**.",
         ],
         fallback: liveFallback,
+      },
+    },
+    {
+      id: "evaluators",
+      chip: "Evaluators",
+      title: "Evaluators in Microsoft Foundry",
+      blocks: [
+        {
+          kind: "table",
+          caption:
+            "Here is what Microsoft Foundry offers, even if your agent does not run in Foundry.",
+          headers: ["Family", "What it checks", "Examples"],
+          rows: [
+            ["Quality", "Is the answer clear and easy to follow?", "Coherence, Fluency"],
+            [
+              "RAG (search, then answer)",
+              "Is the answer based on the right sources?",
+              "Groundedness, Relevance, Retrieval",
+            ],
+            [
+              "Risk and safety",
+              "Is anything harmful, leaked, or forbidden?",
+              "Hate and Unfairness, Violence, Indirect Attack, Sensitive Data Leakage, Prohibited Actions",
+            ],
+            [
+              "Agent",
+              "Did the agent understand, pick the right tool, and finish the job?",
+              "Intent Resolution, Task Adherence, Tool Call Accuracy, Task Completion",
+            ],
+            [
+              "Text similarity (NLP)",
+              "How close is it to a known good answer?",
+              "Similarity, F1, BLEU, ROUGE, METEOR",
+            ],
+            [
+              "Graders, rubrics, and custom",
+              "Your own rules, checked exactly or by a judge model",
+              "String Checker, Model Labeler, Rubric, custom evaluators",
+            ],
+          ],
+        },
+        {
+          kind: "lead",
+          text: "This demo uses String Checker for exact rules and Model Labeler as the judge. Intent Resolution is shown for information only.",
+        },
+        {
+          kind: "launch",
+          links: [
+            {
+              label: "Built-in evaluators reference",
+              href: "https://learn.microsoft.com/azure/foundry/concepts/built-in-evaluators",
+            },
+            { label: "Products and links", href: "/#/docs/presentation/product-links.md" },
+          ],
+        },
+      ],
+      notes: {
+        minutes: 2,
+        surface: "slides",
+        say: [
+          "Here is what we have in Microsoft Foundry, even if you do not run your agent in Foundry.",
+          "There are families for quality, search-based answers, risk and safety, agents, and text similarity.",
+          "You can also write your own graders, rubrics, and custom evaluators.",
+          "The Azure AI Evaluation SDK runs these from your own code or CI. Azure AI Content Safety is a separate service that checks safety only.",
+          "Flash this slide, then go straight to real results from this app.",
+        ],
+        watch: ["Some evaluators are in preview. Say so if asked."],
+      },
+    },
+    {
+      id: "assert-tests",
+      chip: "Results",
+      title: "Evaluation results: does it keep its promises?",
+      blocks: [
+        {
+          kind: "compare",
+          left: {
+            title: "Positive tests",
+            tone: "success",
+            items: ["Allowed reads still work", "The assistant does not over-refuse"],
+          },
+          right: {
+            title: "Negative tests",
+            tone: "danger",
+            items: [
+              "Unassigned accounts are denied",
+              "Sensitive data is redacted",
+              "Bypass attempts fail",
+            ],
+          },
+        },
+        {
+          kind: "lead",
+          text: "In CI, a free policy regression runs 10 scenarios: 8 violations with no rules, 0 when governed. In Microsoft Foundry, an 18-question evaluation grades the live model and policy together.",
+        },
+        {
+          kind: "launch",
+          text: "Show a saved Foundry evaluation run, then read one failed row.",
+          links: [{ label: "Evaluations", href: "/#/evaluations" }],
+        },
+      ],
+      notes: {
+        minutes: 3,
+        surface: "app",
+        say: [
+          "These are real results from this app, graded in Microsoft Foundry.",
+          "A policy is only useful if it is tested in both directions.",
+          "We test what the system must do and what it must refuse.",
+          "The unsafe baseline violates policy. The governed path does not.",
+          "Foundry grades every answer with exact checks and a judge model, and keeps every run.",
+        ],
+        do: [
+          "Press **D** to show **Evaluations** in the Demo Window.",
+          "Open the newest run with **See results**.",
+          "Point out **Questions passed** next to **Foundry's own totals**.",
+          "Select **Failed** and read the judge's reason out loud.",
+        ],
+        watch: [
+          "The built-in grader marks correct refusals as failures, so it does not decide pass or fail.",
+          "The judge can find a real problem: a refusal message that is correct but unclear.",
+        ],
+        fallback: [
+          "If Foundry is slow, show the newest finished run. Do not start a new run during the talk; it takes 2 to 4 minutes.",
+          "If the Evaluations page cannot load at all, say so, then switch to the **Practice** backup and show the same rules in the two lanes.",
+        ],
+      },
+    },
+    {
+      id: "agt-family",
+      chip: "AGT family",
+      title: "ACS, ASSERT, and the Agent Governance Toolkit",
+      blocks: [
+        {
+          kind: "table",
+          caption:
+            "One family, three jobs: the toolkit holds the pieces, ACS enforces the rules, and ASSERT proves they work.",
+          headers: [
+            "",
+            "Agent Governance Toolkit (AGT)",
+            "ACS (Agent Control Specification)",
+            "ASSERT",
+          ],
+          rows: [
+            [
+              "Its job",
+              "The umbrella toolkit for governing agents",
+              "Define policy and enforce it",
+              "Verify behavior with generated tests",
+            ],
+            [
+              "When it runs",
+              "While you build and while the agent runs",
+              "On every request, at set points in the agent loop",
+              "Before release and after each policy change",
+            ],
+            [
+              "What you get",
+              "Policy engine, identity, audit, red-team tools, MCP security gateway",
+              "A decision: allow, warn, deny, escalate, or transform",
+              "Pass and fail scores with a judge's reasons",
+            ],
+            [
+              "In this demo",
+              "Supplies the ACS SDK the app uses",
+              "Checks the input, each tool call, and each tool result",
+              "Compares the no-rules lane with the governed lane",
+            ],
+            [
+              "Where it lives",
+              "github.com/microsoft/agent-governance-toolkit",
+              "Inside AGT, in the policy-engine folder",
+              "github.com/responsibleai/ASSERT",
+            ],
+          ],
+        },
+        {
+          kind: "chain",
+          label: "How they work together",
+          items: [
+            "Name a risk",
+            "ASSERT measures it",
+            "ACS policy blocks it",
+            "ASSERT re-runs to prove the fix",
+          ],
+        },
+        {
+          kind: "honest",
+          text: "AGT and ACS are in Public Preview, and ASSERT is version 0.3. Names and APIs may change.",
+        },
+      ],
+      notes: {
+        minutes: 3,
+        surface: "slides",
+        say: [
+          "These three names come up together, so here is the simple version.",
+          "ACS defines the policy and enforces it while the agent runs. It is now part of the Agent Governance Toolkit, so think of it as the toolkit's policy engine.",
+          "ASSERT verifies. It turns written rules into test conversations and has a judge score them.",
+          "Microsoft Foundry evaluators grade quality and safety. ASSERT checks your own written rules. Use both.",
+          "Now we break some rules on purpose and watch ACS stop them.",
+        ],
       },
     },
     {
@@ -459,7 +662,7 @@ export const sessionDeck: Deck = {
         },
       ],
       notes: {
-        minutes: 3,
+        minutes: 2,
         surface: "slides",
         say: [
           "There are three places to intervene: before the model output becomes a tool call, before the tool runs, and after the tool returns.",
@@ -484,7 +687,7 @@ export const sessionDeck: Deck = {
         },
       ],
       notes: {
-        minutes: 3,
+        minutes: 2,
         surface: "slides",
         say: [
           "This is not a slide-only rule. It is the real policy file.",
@@ -506,11 +709,11 @@ export const sessionDeck: Deck = {
         },
         {
           kind: "honest",
-          text: "The LLM judge and fraud classifier are simple keyword stand-ins for demo purposes.",
+          text: "The policy's LLM judge and fraud classifier annotators are simple keyword stand-ins for demo purposes.",
         },
         {
           kind: "honest",
-          text: "Foundry evaluators are shown as a trust-stack layer, but they are not wired into this app.",
+          text: "The Foundry evaluation uses 18 made-up questions. A judge model can be wrong, so exact checks decide most rows.",
         },
         {
           kind: "honest",
@@ -518,69 +721,12 @@ export const sessionDeck: Deck = {
         },
       ],
       notes: {
-        minutes: 2,
+        minutes: 1,
         surface: "slides",
         say: [
           "Governance work should be honest about where controls live.",
           "This demo centralizes the policy so we can see it clearly.",
           "Production systems should still enforce hard limits in the bank API too.",
-        ],
-      },
-    },
-    {
-      id: "assert-tests",
-      chip: "Tests",
-      title: "Testing the promises: ASSERT and policy regression",
-      blocks: [
-        {
-          kind: "compare",
-          left: {
-            title: "Positive tests",
-            tone: "success",
-            items: ["Allowed reads still work", "The assistant does not over-refuse"],
-          },
-          right: {
-            title: "Negative tests",
-            tone: "danger",
-            items: [
-              "Unassigned accounts are denied",
-              "Sensitive data is redacted",
-              "Bypass attempts fail",
-            ],
-          },
-        },
-        {
-          kind: "lead",
-          text: "In CI, a free policy regression runs 10 scenarios: 8 violations with no rules, 0 when governed. In Microsoft Foundry, an 18-question evaluation grades the live model and policy together.",
-        },
-        {
-          kind: "launch",
-          text: "Show a saved Foundry evaluation run, then read one failed row.",
-          links: [{ label: "Evaluations", href: "/#/evaluations" }],
-        },
-      ],
-      notes: {
-        minutes: 3,
-        surface: "app",
-        say: [
-          "A policy is only useful if it is tested in both directions.",
-          "We test what the system must do and what it must refuse.",
-          "The unsafe baseline violates policy. The governed path does not.",
-          "Foundry grades every answer with exact checks and a judge model, and keeps every run.",
-        ],
-        do: [
-          "Press **D** to show **Evaluations** in the Demo Window.",
-          "Open the newest run with **See results**.",
-          "Point out **Questions passed** next to **Foundry's own totals**.",
-          "Select **Failed** and read the judge's reason out loud.",
-        ],
-        watch: [
-          "The built-in grader marks correct refusals as failures, so it does not decide pass or fail.",
-          "The judge can find a real problem: a refusal message that is correct but unclear.",
-        ],
-        fallback: [
-          "If Foundry is slow, show the newest finished run. Do not start a new run during the talk; it takes 2 to 4 minutes.",
-          "If the Evaluations page cannot load at all, say so, then switch to the **Practice** backup and show the same rules in the two lanes.",
         ],
       },
     },
@@ -670,7 +816,7 @@ export const sessionDeck: Deck = {
         },
       ],
       notes: {
-        minutes: 2,
+        minutes: 1,
         surface: "slides",
         say: [
           "Agent governance does not replace platform security.",
@@ -736,7 +882,7 @@ export const sessionDeck: Deck = {
             { title: "Write one policy", text: "Begin with one role, one tool, and one rule." },
             {
               title: "Test both ways",
-              text: "Prove allowed work still succeeds and denied work still fails.",
+              text: "Prove allowed work still succeeds and denied work still fails, with ASSERT or Microsoft Foundry evaluations.",
             },
             { title: "Wire telemetry", text: "Keep the evidence trail from day one." },
             {
@@ -767,7 +913,11 @@ export const sessionDeck: Deck = {
         },
         {
           kind: "lead",
-          text: "A trust platform is a trust dashboard plus policy-driven governance.",
+          text: "Trust comes from policy you can read, tests you can rerun, and evidence you can show.",
+        },
+        {
+          kind: "launch",
+          links: [{ label: "Products and links", href: "/#/docs/presentation/product-links.md" }],
         },
       ],
       notes: {

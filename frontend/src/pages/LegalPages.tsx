@@ -30,7 +30,7 @@ export function PrivacyPage() {
           timing, and policy decisions is recorded in Azure Application Insights for 30 days.
         </li>
         <li>
-          Requests are processed by Azure OpenAI in Azure AI Foundry. Microsoft does not use this
+          Requests are processed by Azure OpenAI in Microsoft Foundry. Microsoft does not use this
           data to train models. See{" "}
           <a
             href="https://learn.microsoft.com/legal/cognitive-services/openai/data-privacy"

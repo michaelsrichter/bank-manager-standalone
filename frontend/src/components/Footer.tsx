@@ -6,7 +6,7 @@ export const SITE = {
   repoUrl: "https://github.com/michaelsrichter/bank-manager-standalone",
   upstreamUrl: "https://github.com/tmathew1000/bank-manager-standalone",
   products: [
-    { label: "Azure AI Foundry", href: "https://azure.microsoft.com/products/ai-foundry" },
+    { label: "Microsoft Foundry", href: "https://azure.microsoft.com/products/ai-foundry" },
     { label: "Azure Container Apps", href: "https://azure.microsoft.com/products/container-apps" },
     {
       label: "Agent Governance Toolkit",

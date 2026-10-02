@@ -128,7 +128,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   }
 }
 
-// ------------------------------------------------------------ AI Foundry
+// ------------------------------------------------------------ Microsoft Foundry
 resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: foundryName
   location: location

@@ -3,7 +3,7 @@ sequenceDiagram
   autonumber
   actor U as Browser
   participant API as FastAPI (Container Apps)
-  participant M as Azure AI Foundry model
+  participant M as Microsoft Foundry model
   participant B as Baseline lane (no rules)
   participant G as ACS governed lane
   U->>API: POST /api/compare (prompt, persona, model, toggles)

@@ -163,7 +163,7 @@ describe("slides and script pages", () => {
     window.history.pushState(null, "", "/presentation/session#problem");
     const user = userEvent.setup();
     render(<SlidesPage deck={sessionDeck} presenter={emptyPresenter} onSavePresenter={vi.fn()} />);
-    expect(screen.getByText(/3 \/ 20: Problem/)).toBeInTheDocument();
+    expect(screen.getByText(/3 \/ 22: Problem/)).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
     expect(window.location.hash).toBe("#model-policy");
     await user.keyboard("n");
@@ -257,7 +257,7 @@ describe("two-screen mode", () => {
     await userEvent.click(screen.getByRole("button", { name: "Slide (S)" }));
     expect(screen.getByTitle("Live demo (live site)")).toHaveAttribute("hidden");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "PageDown" }));
-    await waitFor(() => expect(window.location.hash).toBe("#live-role"));
+    await waitFor(() => expect(window.location.hash).toBe("#evaluators"));
   });
 
   it("offers portal links in their own window on the evidence slide", () => {

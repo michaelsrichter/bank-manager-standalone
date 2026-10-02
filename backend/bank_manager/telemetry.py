@@ -121,7 +121,7 @@ def configure_telemetry(
     """Export traces, metrics, and logs to Azure Monitor with Entra (managed identity) auth.
 
     Instrumented automatically: FastAPI requests, httpx (the OpenAI SDK's HTTP
-    calls to Azure AI Foundry), Azure SDK calls, and Python logging. The agent
+    calls to Microsoft Foundry), Azure SDK calls, and Python logging. The agent
     harness adds GenAI spans and metrics in ``bank_manager.tracing``; ACS adds
     ``acs_intervention_*`` metrics. Message content is never captured.
     """

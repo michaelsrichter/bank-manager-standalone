@@ -20,7 +20,7 @@ decides whether it may run. The app reaches the AI model over a **private**
 network connection using its own Azure identity, not a password. Everything
 reports to one monitoring workspace.
 
-![Four layers stacked top to bottom: 1 Visitor (browser); 2 Azure Container Apps with API, agent harness, ACS policy engine, and bank tools; 3 Private AI access with a private endpoint and Azure AI Foundry; 4 Operations with Application Insights, Log Analytics, workbook, and guardrails](diagrams/architecture.svg)
+![Four layers stacked top to bottom: 1 Visitor (browser); 2 Azure Container Apps with API, agent harness, ACS policy engine, and bank tools; 3 Private AI access with a private endpoint and Microsoft Foundry; 4 Operations with Application Insights, Log Analytics, workbook, and guardrails](diagrams/architecture.svg)
 
 | Layer | Trust boundary | What protects it |
 |---|---|---|
@@ -36,7 +36,7 @@ permissions, each on exactly one resource. There are no keys or passwords. A
 developer can optionally get the same two data permissions for local testing
 (dotted lines); both grants come from the same Bicep module, so they can't drift apart.
 
-![Identity map: the app's managed identity has AcrPull on the container registry, Cognitive Services OpenAI User on Azure AI Foundry, and Monitoring Metrics Publisher on Application Insights; the developer optionally has the same two data roles](diagrams/identity.svg)
+![Identity map: the app's managed identity has AcrPull on the container registry, Cognitive Services OpenAI User on Microsoft Foundry, and Monitoring Metrics Publisher on Application Insights; the developer optionally has the same two data roles](diagrams/identity.svg)
 
 ## 3. How ACS decides (governance flow)
 

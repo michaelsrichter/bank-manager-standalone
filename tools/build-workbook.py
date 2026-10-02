@@ -127,7 +127,7 @@ text(
     """# Governed AI Bank Assistant — telemetry
 **For demo purposes only.** Every chart comes from OpenTelemetry sent to Azure Monitor with
 managed identity: the FastAPI app, the agent harness (`invoke_agent` → `chat` → `acs.evaluate` →
-`execute_tool` spans), the ACS policy engine (`acs_intervention_*` metrics), Azure AI Foundry
+`execute_tool` spans), the ACS policy engine (`acs_intervention_*` metrics), Microsoft Foundry
 (diagnostic logs + platform metrics), and Container Apps. No prompts, answers, or account data
 are recorded. Event definitions: `docs/telemetry/events.md`.""",
 )
@@ -597,7 +597,7 @@ AppEvents
 text(
     "azure",
     "## 5. Azure services\nErrors, throttling, and latency from each resource's own diagnostic logs: "
-    "Azure AI Foundry, Container Registry, and Container Apps. This demo uses no AI Search, Storage, "
+    "Microsoft Foundry, Container Registry, and Container Apps. This demo uses no AI Search, Storage, "
     "Cosmos DB, or Key Vault (not used). **Good looks like:** no 429 or 5xx rows, and no restart loops.",
 )
 query(

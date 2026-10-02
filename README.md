@@ -11,7 +11,7 @@ tool call then runs twice, side by side:
   runtime checks the request, the tool call, and the result, and can allow,
   block, pause for human approval, or redact private data.
 
-Built on Azure AI Foundry (GPT-4.1 / GPT-4.1 mini), Azure Container Apps,
+Built on Microsoft Foundry (GPT-4.1 / GPT-4.1 mini), Azure Container Apps,
 FastAPI, and React. Forked from
 [tmathew1000/bank-manager-standalone](https://github.com/tmathew1000/bank-manager-standalone)
 and rebuilt to the EPS AI demo standards in [AGENTS.md](AGENTS.md).

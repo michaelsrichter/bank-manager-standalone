@@ -56,7 +56,7 @@ governed lane blocks it before the tool runs, and names the exact rule.
 - **Backend:** Python FastAPI (`backend/bank_manager/`), streaming NDJSON.
 - **Policy:** Agent Control Specification manifest + Rego rules
   (`backend/governance/`), evaluated by Open Policy Agent.
-- **AI:** Azure OpenAI models in Azure AI Foundry, selected by
+- **AI:** Azure OpenAI models in Microsoft Foundry, selected by
   [`config/models.json`](../../config/models.json).
 
 Origin: forked from `tmathew1000/bank-manager-standalone` (a Streamlit app) and

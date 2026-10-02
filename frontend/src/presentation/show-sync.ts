@@ -8,6 +8,7 @@ export const appScreens = [
   { path: "/#/health", label: "Service status" },
   { path: "/#/docs/governance-tour.md", label: "Governance code tour" },
   { path: "/#/docs/architecture/diagram.md", label: "Architecture diagrams" },
+  { path: "/#/docs/presentation/product-links.md", label: "Products and links" },
 ] as const;
 
 export type AppScreen = (typeof appScreens)[number];

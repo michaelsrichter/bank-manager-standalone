@@ -31,6 +31,7 @@ need rules enforced by software, not just good prompts.
 | [cost/cost-to-run.md](cost/cost-to-run.md) | Monthly cost today |
 | [cost/cost-at-scale.md](cost/cost-at-scale.md) | Cost at 10x and 100x usage |
 | [presentation/README.md](presentation/README.md) | Talk slides, presenter script, two-screen mode, and QR codes |
+| [presentation/product-links.md](presentation/product-links.md) | Every product in the talk (Microsoft Foundry, evaluators, AGT, ACS, ASSERT), what each does, and links |
 | [evaluations/README.md](evaluations/README.md) | Foundry Evaluations: the 18 test questions, graders, roles, cost, and how to read results |
 | [operations/deploy.md](operations/deploy.md) | Deploy with `azd up` |
 | [operations/custom-domain.md](operations/custom-domain.md) | Custom domain + free managed certificate |

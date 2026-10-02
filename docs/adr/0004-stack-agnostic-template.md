@@ -6,7 +6,7 @@
   frontend/backend framework, and partner ideas vary widely enough that
   presupposing one stack (or one compute shape) would mean ripping it out on
   many demos. Early drafts of this template provisioned Static Web Apps +
-  Azure Functions + AI Foundry directly in `infra/`, which baked in a compute
+  Azure Functions + Microsoft Foundry directly in `infra/`, which baked in a compute
   and AI opinion nothing had asked for yet.
 - Decision: This template ships no `backend/`, `frontend/`, or compute/data
   resources. `infra/` only wires what's true regardless of stack: the

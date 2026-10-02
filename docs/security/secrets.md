@@ -10,7 +10,7 @@ instead.
 
 | Dependency | Method | Key-based auth |
 |---|---|---|
-| Azure AI Foundry / Azure OpenAI | Entra token for `https://cognitiveservices.azure.com/.default` via `DefaultAzureCredential` | **Disabled** (`disableLocalAuth: true`) |
+| Microsoft Foundry / Azure OpenAI | Entra token for `https://cognitiveservices.azure.com/.default` via `DefaultAzureCredential` | **Disabled** (`disableLocalAuth: true`) |
 | Application Insights | Entra token via `configure_azure_monitor(credential=...)` | **Disabled** (`DisableLocalAuth: true`) |
 | Container Registry | Managed identity pull (`AcrPull`) | Admin user disabled; anonymous pull disabled |
 | Container Apps → Log Analytics | `azure-monitor` destination + diagnostic settings | No shared key passed |

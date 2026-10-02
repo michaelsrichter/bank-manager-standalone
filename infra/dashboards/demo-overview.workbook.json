@@ -49,7 +49,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Governed AI Bank Assistant \u2014 telemetry\n**For demo purposes only.** Every chart comes from OpenTelemetry sent to Azure Monitor with\nmanaged identity: the FastAPI app, the agent harness (`invoke_agent` \u2192 `chat` \u2192 `acs.evaluate` \u2192\n`execute_tool` spans), the ACS policy engine (`acs_intervention_*` metrics), Azure AI Foundry\n(diagnostic logs + platform metrics), and Container Apps. No prompts, answers, or account data\nare recorded. Event definitions: `docs/telemetry/events.md`."
+        "json": "# Governed AI Bank Assistant \u2014 telemetry\n**For demo purposes only.** Every chart comes from OpenTelemetry sent to Azure Monitor with\nmanaged identity: the FastAPI app, the agent harness (`invoke_agent` \u2192 `chat` \u2192 `acs.evaluate` \u2192\n`execute_tool` spans), the ACS policy engine (`acs_intervention_*` metrics), Microsoft Foundry\n(diagnostic logs + platform metrics), and Container Apps. No prompts, answers, or account data\nare recorded. Event definitions: `docs/telemetry/events.md`."
       },
       "name": "intro"
     },
@@ -707,7 +707,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## 5. Azure services\nErrors, throttling, and latency from each resource's own diagnostic logs: Azure AI Foundry, Container Registry, and Container Apps. This demo uses no AI Search, Storage, Cosmos DB, or Key Vault (not used). **Good looks like:** no 429 or 5xx rows, and no restart loops."
+        "json": "## 5. Azure services\nErrors, throttling, and latency from each resource's own diagnostic logs: Microsoft Foundry, Container Registry, and Container Apps. This demo uses no AI Search, Storage, Cosmos DB, or Key Vault (not used). **Good looks like:** no 429 or 5xx rows, and no restart loops."
       },
       "name": "azure"
     },
