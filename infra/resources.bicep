@@ -25,6 +25,9 @@ param budgetStartDate string
 @description('SHA-256 (hex) of the presenter key that may start Foundry evaluation runs. Empty disables starting runs from the site. The key itself is never stored.')
 param evaluationsPresenterKeySha256 string = ''
 
+@description('Turn on Foundry Evaluations. Foundry grades runs from its own service, which needs the Foundry account to accept public (Entra-only) traffic. Set false to keep the account private-endpoint only; see docs/adr/0014-foundry-public-endpoint-for-evaluations.md.')
+param evaluationsEnabled bool = true
+
 // Single source of truth for models: the same file the backend reads.
 var modelCatalog = loadJsonContent('../config/models.json')
 var modelOptions = modelCatalog.roles.intent.options
@@ -139,9 +142,14 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
     allowProjectManagement: true
     // No API keys: Microsoft Entra ID only.
     disableLocalAuth: true
-    publicNetworkAccess: empty(allowedIpRules) ? 'Disabled' : 'Enabled'
+    // Foundry's cloud evaluation service reaches the account over its public endpoint
+    // unless the account uses network injection, which cannot be added to an existing
+    // account. With evaluations on, the endpoint accepts public traffic, still Entra-only.
+    // The app itself keeps using the private endpoint. See ADR 0014.
+    publicNetworkAccess: (evaluationsEnabled || !empty(allowedIpRules)) ? 'Enabled' : 'Disabled'
     networkAcls: {
-      defaultAction: 'Deny'
+      defaultAction: evaluationsEnabled ? 'Allow' : 'Deny'
+      bypass: 'AzureServices'
       ipRules: [for ip in allowedIpRules: { value: trim(ip) }]
     }
   }
@@ -409,7 +417,7 @@ resource web 'Microsoft.App/containerApps@2025-01-01' = {
             { name: 'ANSWER_REVIEW_WORKBOOK_ID', value: answerReviewWorkbookId }
             { name: 'OVERVIEW_WORKBOOK_ID', value: overviewWorkbookId }
             // Foundry Evaluations (docs/evaluations/README.md). Public endpoint and resource ID, not secrets.
-            { name: 'EVALUATIONS_ENABLED', value: '1' }
+            { name: 'EVALUATIONS_ENABLED', value: evaluationsEnabled ? '1' : '0' }
             { name: 'FOUNDRY_PROJECT_ENDPOINT', value: 'https://${foundryName}.services.ai.azure.com/api/projects/${foundryProjectName}' }
             { name: 'FOUNDRY_PROJECT_RESOURCE_ID', value: '${foundry.id}/projects/${foundryProjectName}' }
             { name: 'EVALUATIONS_PRESENTER_KEY_SHA256', value: evaluationsPresenterKeySha256 }
@@ -554,7 +562,7 @@ module observability 'modules/observability.bicep' = {
   dependsOn: [deployments, foundryDnsGroup]
 }
 
-module evaluationRoles 'modules/evaluations-roles.bicep' = {
+module evaluationRoles 'modules/evaluations-roles.bicep' = if (evaluationsEnabled) {
   name: 'evaluations-roles'
   params: {
     foundryAccountName: foundry.name

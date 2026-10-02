@@ -301,7 +301,7 @@ question is scored here, from every **required** grader result:
 
 <!-- tour:snippet id="evaluation-score" file="backend/bank_manager/evaluations.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/evaluations.py#L549-L558"><code>backend/bank_manager/evaluations.py</code></a> · lines 549–558</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/evaluations.py#L558-L567"><code>backend/bank_manager/evaluations.py</code></a> · lines 558–567</summary>
 
 ```python
 def score_item(suite: EvaluationSuite, results: Sequence[Mapping[str, Any]]) -> str:

@@ -228,7 +228,7 @@ def test_a_question_passes_only_when_every_required_grader_passed(suite):
         ("Error code: 401 - PermissionDenied", "access_denied"),
         (
             "UnauthorizedUserAction: The action cannot be finished with reason Forbidden",
-            "access_denied",
+            "network_blocked",
         ),
         ("Public access is disabled. Please configure private endpoint.", "network_blocked"),
         ("429 Too Many Requests", "rate_limited"),

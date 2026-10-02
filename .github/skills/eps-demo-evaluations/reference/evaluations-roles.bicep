@@ -52,18 +52,13 @@ resource evaluationRunnerRole 'Microsoft.Authorization/roleDefinitions@2022-04-0
   name: guid(resourceGroup().id, 'foundry-evaluation-runner')
   properties: {
     roleName: 'Foundry evaluation runner (${resourceGroup().name})'
-    description: 'Read and start Microsoft Foundry evaluations and Azure OpenAI evals. No model management, keys, files, or fine-tuning.'
+    description: 'Create and read Azure OpenAI evals on the Foundry account, which Foundry does as the caller for OpenAI-style graders. No models, keys, files, or fine-tuning.'
     type: 'CustomRole'
     permissions: [
       {
         actions: []
         notActions: []
         dataActions: [
-          // Foundry stores evals as project assets.
-          'Microsoft.CognitiveServices/accounts/AIServices/assets/read'
-          'Microsoft.CognitiveServices/accounts/AIServices/assets/write'
-          'Microsoft.CognitiveServices/accounts/AIServices/evaluations/read'
-          'Microsoft.CognitiveServices/accounts/AIServices/evaluations/write'
           'Microsoft.CognitiveServices/accounts/OpenAI/evals/read'
           'Microsoft.CognitiveServices/accounts/OpenAI/evals/write'
         ]
@@ -84,10 +79,11 @@ resource appEvaluationRunner 'Microsoft.Authorization/roleAssignments@2022-04-01
   }
 }
 
-// Starting a run executes as the caller inside the project, which needs Foundry User on
-// the project (Microsoft's documented role for evaluations). With only the custom role
-// above, reading runs works but new runs fail with "UnauthorizedUserAction: Forbidden".
-// Project scope keeps it away from the account's model deployments and settings.
+// Foundry User on the project: Microsoft's documented role for running evaluations. It covers
+// the project's evaluation API (AIServices/evaluations/*) and the project assets where evals are
+// stored (AIServices/assets/*). Project scope keeps it away from the account's deployments.
+// Note: 'UnauthorizedUserAction: Forbidden' on new runs is a NETWORK block, not a missing role
+// (docs/adr/0014-foundry-public-endpoint-for-evaluations.md).
 resource appProjectUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(project.id, appPrincipalId, foundryUserRole)
   scope: project

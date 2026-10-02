@@ -464,6 +464,15 @@ def error_category(message: str | None) -> tuple[str, str]:
     Raw messages can contain principal IDs and endpoints, so they never leave the server.
     """
     text = (message or "").lower()
+    # Foundry reports a network block on the account as "UnauthorizedUserAction ... Forbidden",
+    # which looks like a missing role. In our tests it was always the network.
+    if "unauthorizeduseraction" in text:
+        return (
+            "network_blocked",
+            "Foundry's evaluation service could not reach the Foundry account. The usual cause "
+            "is that the account's public endpoint is off; a missing role can cause it too "
+            "(docs/evaluations/README.md#network).",
+        )
     if any(
         word in text
         for word in (

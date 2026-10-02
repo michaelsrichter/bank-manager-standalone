@@ -191,31 +191,33 @@ Three identities take part. Put all of their roles in one Bicep module
 The custom role has only these data actions:
 
 ```text
-Microsoft.CognitiveServices/accounts/AIServices/assets/read
-Microsoft.CognitiveServices/accounts/AIServices/assets/write
-Microsoft.CognitiveServices/accounts/AIServices/evaluations/read
-Microsoft.CognitiveServices/accounts/AIServices/evaluations/write
 Microsoft.CognitiveServices/accounts/OpenAI/evals/read
 Microsoft.CognitiveServices/accounts/OpenAI/evals/write
 ```
 
-What each piece is for, proven step by step on a deployed app:
+What each piece is for, proven step by step on a deployed app, starting runs as
+the app's own managed identity:
 
 - **Foundry User on the project** is Microsoft's documented role for running
-  evaluations. Without it, the app could read runs, but every new run failed at
-  once with `UnauthorizedUserAction: … Forbidden`. Keep it on the project, not
-  the account.
+  evaluations. It covers the project's evaluation API and the project assets
+  where Foundry stores evals. Without a project role, even listing evals fails
+  with "does not have permissions for
+  `Microsoft.CognitiveServices/accounts/AIServices/assets/read`". Keep it on the
+  project, not the account.
 - For OpenAI-style graders (`string_check`, `label_model`), Foundry also creates
   matching evals on the **account** as the caller, which checks
   `OpenAI/evals/*`. A project-scoped role cannot reach the account. Without it a
   run fails with "lacks the required data action
   `Microsoft.CognitiveServices/accounts/OpenAI/evals/write`".
-- Foundry stores evals as project assets. Listing evals without
-  `AIServices/assets/read` fails with "does not have permissions for
-  `Microsoft.CognitiveServices/accounts/AIServices/assets/read`".
 - The built-in account roles that include `OpenAI/evals/*` are broader: Foundry
   User on the account can list keys, and Cognitive Services OpenAI Contributor
-  can upload files and fine-tune. Use them only with an ADR.
+  can upload files and fine-tune. Microsoft's permissions page suggests Foundry
+  User on the account when a run invokes a model; in our tests it was not needed,
+  because the judge model is called as the project's identity. Use the broader
+  roles only with an ADR.
+- **`UnauthorizedUserAction: The action cannot be finished with reason
+  Forbidden` is a network block, not a role problem** (see Network). We added
+  roles for an hour before proving it.
 - Granting the judge-model role to the **app's** identity does not help. Foundry
   calls the judge as the **project's** identity. Read the project's
   `identity.principalId` from the project resource; do not reuse the app's.
@@ -227,17 +229,30 @@ What each piece is for, proven step by step on a deployed app:
 
 ## Network
 
-- Reach the project endpoint through the Foundry account's private endpoint. The
-  private DNS zone `privatelink.services.ai.azure.com` must be linked to the
-  app's virtual network (with `privatelink.openai.azure.com` and
-  `privatelink.cognitiveservices.azure.com`), as `eps-demo-architecture`
-  requires.
-- The Governed AI Bank Assistant runs live evaluations with the Foundry account's
-  public network access **disabled** and no network injection. Verify this in
-  your own deployment before you rely on it, and record the result.
-- Network-injected (bring-your-own VNet) Foundry setups have extra evaluation
-  requirements, including a capability host. See
-  [Configure virtual network support for evaluation](https://learn.microsoft.com/azure/foundry/concepts/evaluation-virtual-network).
+Foundry grades runs inside **its own service**, and that service must reach the
+Foundry account. Tested on a deployed demo, starting runs as the app's managed
+identity:
+
+| Foundry account network | Result |
+|---|---|
+| Public access disabled (private endpoint only) | Every run fails at once: `UnauthorizedUserAction: … Forbidden` |
+| Public access enabled, default Deny, `bypass: AzureServices` | Same failure |
+| Public access enabled, default Allow, `disableLocalAuth: true` | Runs complete |
+
+- Without **network injection** (a delegated subnet and capability host, which
+  can only be set when the Foundry account is created), the account's public
+  endpoint must accept traffic. Keep `disableLocalAuth: true` so every call needs
+  an Entra ID token. ELK Burgers runs this way. Record the choice in an ADR and
+  as a known gap in the threat model, and offer a switch
+  (`EVALUATIONS_ENABLED=false`) that returns the account to private-endpoint only.
+- For a long-lived or sensitive demo, create the Foundry account with network
+  injection from the start. See
+  [Configure virtual network support for evaluation](https://learn.microsoft.com/azure/foundry/concepts/evaluation-virtual-network)
+  and Microsoft's evaluation-only template (15a).
+- The app still reaches the project endpoint through the account's private
+  endpoint. The private DNS zone `privatelink.services.ai.azure.com` must be
+  linked to the app's virtual network (with `privatelink.openai.azure.com` and
+  `privatelink.cognitiveservices.azure.com`), as `eps-demo-architecture` requires.
 - Developer machines on corporate networks or dev boxes may not match IP allow
   rules. Test from the deployed app, which is the path that matters.
 
@@ -385,6 +400,8 @@ Prove each item on the deployed demo, not locally:
    evaluations, the app has Foundry User on the project and the custom runner
    role on the account, and nothing broader.
 6. The page in fake or local mode shows the recorded example, marked not live.
+7. The Foundry account's network setting matches the ADR (public endpoint with
+   Entra ID only, or network injection), and API keys are disabled.
 
 ## Anti-patterns to refuse
 
@@ -395,6 +412,8 @@ Prove each item on the deployed demo, not locally:
 - Giving the app Foundry Owner, Contributor, Foundry User on the whole account,
   or Cognitive Services OpenAI Contributor "to make evals work".
 - Starting runs without a key, or limits kept only in memory.
+- Adding roles to fix `UnauthorizedUserAction: Forbidden` before checking the
+  Foundry account's network setting.
 - Real customer data in the dataset or in item fields.
 - Editing a suite's graders in place instead of creating a new suite name.
 

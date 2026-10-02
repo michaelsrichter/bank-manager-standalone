@@ -141,13 +141,9 @@ A **managed identity** is an identity that Azure creates and manages for a
 resource, so the resource can sign in to other Azure services without a password
 or key.
 
-**Foundry evaluation runner** is a custom role with only six data actions:
+**Foundry evaluation runner** is a custom role with only two data actions:
 
 ```text
-Microsoft.CognitiveServices/accounts/AIServices/assets/read
-Microsoft.CognitiveServices/accounts/AIServices/assets/write
-Microsoft.CognitiveServices/accounts/AIServices/evaluations/read
-Microsoft.CognitiveServices/accounts/AIServices/evaluations/write
 Microsoft.CognitiveServices/accounts/OpenAI/evals/read
 Microsoft.CognitiveServices/accounts/OpenAI/evals/write
 ```
@@ -161,16 +157,18 @@ and the built-in account roles that can are broader: Foundry User on the account
 can list keys, and Cognitive Services OpenAI Contributor can upload files and
 fine-tune. The custom role adds only what is missing.
 
-What we learned while setting this up (each step was tested on the deployed app):
+What we learned while setting this up (each step was tested on the deployed app,
+starting runs as the app's own identity):
 
-- With only the custom role, the app could **read** runs, but every new run
-  failed at once with `UnauthorizedUserAction: … Forbidden`. Adding Foundry User
-  on the project fixed it.
-- Listing evals without `AIServices/assets/read` fails with "does not have
-  permissions for `Microsoft.CognitiveServices/accounts/AIServices/assets/read`".
-  Foundry stores evals as project assets.
+- **`UnauthorizedUserAction: … Forbidden` was the network, not a role.** It
+  appeared on every run while the account's public endpoint was off, even after
+  adding Foundry User on the account. With the network open, the final roles
+  above were enough. See [Network](#network).
 - Without `OpenAI/evals/write` on the account, a run fails with
   "lacks the required data action `Microsoft.CognitiveServices/accounts/OpenAI/evals/write`".
+- Without a project role, even listing evals fails with "does not have
+  permissions for `Microsoft.CognitiveServices/accounts/AIServices/assets/read`".
+  Foundry stores evals as project assets. Foundry User on the project covers it.
 - Giving the judge-model role to the **web app's** identity does not help.
   Foundry calls the judge model as the **project's** identity.
 - Role changes take time. Right after granting roles, a run can fail with
@@ -183,10 +181,28 @@ identity. No evaluation key exists anywhere.
 
 ## Network
 
-The Foundry account has public network access **disabled**. The web app reaches
-it through the private endpoint in the demo's virtual network. The private DNS
-zone `privatelink.services.ai.azure.com` makes the project endpoint resolve to
-that private address. Foundry runs the graders inside its own service.
+The web app reaches the Foundry account through the private endpoint in the
+demo's virtual network. The private DNS zone `privatelink.services.ai.azure.com`
+makes the project endpoint resolve to that private address.
+
+Foundry grades runs inside **its own service**, which must also reach the
+account. We tested each setting on the deployed demo
+([ADR 0014](../adr/0014-foundry-public-endpoint-for-evaluations.md)):
+
+| Foundry account network | Result |
+|---|---|
+| Public access off (private endpoint only) | Every run failed at once with `UnauthorizedUserAction: … Forbidden` |
+| Public access on, default Deny, trusted Azure services allowed | Same failure |
+| Public access on, default Allow, Entra ID only (no keys) | Runs completed |
+
+The error looks like a missing role, but it is the network. So while
+evaluations are on, the account's public endpoint accepts traffic that carries a
+valid Microsoft Entra ID token. API keys are turned off, so there is no key to
+steal. To go back to private-endpoint only, run
+`azd env set EVALUATIONS_ENABLED false` and `azd provision`; that also turns the
+feature off. Keeping evaluations private needs a Foundry account created with
+**network injection** (see
+[Configure virtual network support for evaluation](https://learn.microsoft.com/azure/foundry/concepts/evaluation-virtual-network)).
 
 ## Settings
 
@@ -251,8 +267,8 @@ answer.
 |---|---|---|
 | "Starting runs from the site is turned off" | No presenter key hash is set | Run `tools/set-presenter-key.ps1`, then `azd provision` |
 | "Live Foundry evaluations are turned off" | `EVALUATIONS_ENABLED` is not `1`, a project setting is malformed, or `FAKE_AI=1` | Check the container settings |
+| Run **Failed**: "Foundry's evaluation service could not reach the Foundry account" | The account's public endpoint is off (the raw error is `UnauthorizedUserAction … Forbidden`) | See [Network](#network). Check that `EVALUATIONS_ENABLED` is not `false` and run `azd provision` |
 | Run **Failed**: "not allowed to call a grader or the judge model" | A role is missing or has not reached every server yet | Check the roles table above, wait 10 minutes, and start another run |
-| Run **Failed**: "a network rule stopped Foundry" | Public access or private endpoint settings | See [Network](#network) |
 | Questions **Not fully scored** | A grader could not run on those rows | Open the row; its message says what failed |
 | Run stays **Running** for a long time | Foundry is busy, or the project identity cannot update the run | The site ignores runs older than 2 hours when it checks "one at a time" |
 

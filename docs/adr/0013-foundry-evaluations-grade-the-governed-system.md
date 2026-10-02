@@ -21,12 +21,13 @@
     Foundry's overall counts.
   - The app's managed identity gets **Foundry User on the project** (Microsoft's
     documented evaluation role, kept off the account) plus a custom **Foundry
-    evaluation runner** role on the account with six data actions, because
-    Foundry creates matching OpenAI evals on the account as the caller. We
-    avoided Foundry User on the account (can list keys) and Cognitive Services
-    OpenAI Contributor (files and fine-tuning). The custom role alone could read
-    runs but could not start them. The Foundry project's managed identity gets
-    the roles it needs to run graders and call the judge model.
+    evaluation runner** role on the account with only `OpenAI/evals/read` and
+    `OpenAI/evals/write`, because Foundry creates matching OpenAI evals on the
+    account as the caller. We avoided Foundry User on the account (can list
+    keys) and Cognitive Services OpenAI Contributor (files and fine-tuning). The
+    Foundry project's managed identity gets the roles it needs to run graders and
+    call the judge model. Network needs are in
+    [ADR 0014](0014-foundry-public-endpoint-for-evaluations.md).
   - Starting a run needs a presenter key. Only its SHA-256 hash is configured.
 - Consequences:
   - Good: one run grades the model and the rules together, which is what the

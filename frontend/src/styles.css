@@ -1296,3 +1296,7 @@ th {
   flex-basis: 100%;
   margin: 0;
 }
+
+.eval-runs code {
+  white-space: nowrap;
+}

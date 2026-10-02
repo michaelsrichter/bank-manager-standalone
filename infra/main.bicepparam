@@ -22,3 +22,5 @@ param customDomainName = readEnvironmentVariable('AZURE_CUSTOM_DOMAIN', '')
 param customDomainCertificateReady = toLower(readEnvironmentVariable('AZURE_CUSTOM_DOMAIN_CERT_READY', 'false')) == 'true'
 // Presenter key hash for starting evaluation runs (docs/evaluations/README.md). Empty disables starting runs.
 param evaluationsPresenterKeySha256 = readEnvironmentVariable('EVALUATIONS_PRESENTER_KEY_SHA256', '')
+// Foundry Evaluations on/off (docs/adr/0014-foundry-public-endpoint-for-evaluations.md).
+param evaluationsEnabled = toLower(readEnvironmentVariable('EVALUATIONS_ENABLED', 'true')) != 'false'

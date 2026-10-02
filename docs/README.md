@@ -56,7 +56,7 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | Hosted in Azure | ✅ | Azure Container Apps, eastus2 — [ADR 0007](adr/0007-container-apps-single-container.md) |
 | Bicep IaC, one-command deploy | ✅ | [`infra/`](../infra/main.bicep) via `azd up` |
 | Managed Identity, no keys | ✅ | Foundry and App Insights have local auth **disabled**; ACR admin disabled — [secrets](security/secrets.md) |
-| Private Link to Azure dependencies | ⚠️ | Foundry is private-endpoint only. ACR and Azure Monitor ingestion stay public (MI-authenticated) — [ADR 0011](adr/0011-private-link-scope.md) |
+| Private Link to Azure dependencies | ⚠️ | The app reaches Foundry through a private endpoint. Foundry's public endpoint also accepts Entra-only traffic so its evaluation service can grade runs ([ADR 0014](adr/0014-foundry-public-endpoint-for-evaluations.md)). ACR and Azure Monitor ingestion stay public (MI-authenticated) — [ADR 0011](adr/0011-private-link-scope.md) |
 | Config-driven models | ✅ | [`config/models.json`](../config/models.json) drives the app **and** the Bicep deployments |
 | Content filters on | ✅ | `Microsoft.DefaultV2` on every deployment — [content filtering](security/content-filtering.md) |
 | Model + cost visible in UI | ✅ | Requested deployment, actual response model, 4 token categories, estimated cost |
@@ -101,3 +101,4 @@ Honest status against [AGENTS.md](../AGENTS.md) and the `eps-demo-*` skills.
 | [0011](adr/0011-private-link-scope.md) | Private Link for Foundry; ACR and Monitor public with MI | accepted |
 | [0012](adr/0012-practice-mode-and-same-site-framing.md) | Practice mode and same-site framing | accepted |
 | [0013](adr/0013-foundry-evaluations-grade-the-governed-system.md) | Foundry Evaluations grade the governed system | accepted |
+| [0014](adr/0014-foundry-public-endpoint-for-evaluations.md) | Foundry public endpoint (Entra ID only) for evaluations | accepted; supersedes part of 0011 |

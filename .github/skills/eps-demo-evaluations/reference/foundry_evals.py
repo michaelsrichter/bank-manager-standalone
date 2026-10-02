@@ -32,7 +32,9 @@ STUCK_AFTER_SECONDS = 2 * 3600
 
 
 class Transport(Protocol):
-    def send(self, method: str, path: str, body: Mapping[str, Any] | None = None) -> dict[str, Any]: ...
+    def send(
+        self, method: str, path: str, body: Mapping[str, Any] | None = None
+    ) -> dict[str, Any]: ...
 
 
 class HttpTransport:
@@ -44,11 +46,15 @@ class HttpTransport:
         if not PROJECT_ENDPOINT.fullmatch(project_endpoint):
             raise ValueError("Not a Foundry project endpoint.")  # never send the token elsewhere
         self._credential = credential  # e.g. DefaultAzureCredential(managed_identity_client_id=...)
-        self._client = httpx.Client(base_url=project_endpoint.rstrip("/") + "/openai/v1/", timeout=30)
+        self._client = httpx.Client(
+            base_url=project_endpoint.rstrip("/") + "/openai/v1/", timeout=30
+        )
 
     def send(self, method: str, path: str, body: Mapping[str, Any] | None = None) -> dict[str, Any]:
         token = self._credential.get_token(TOKEN_SCOPE).token
-        response = self._client.request(method, path, json=body, headers={"Authorization": f"Bearer {token}"})
+        response = self._client.request(
+            method, path, json=body, headers={"Authorization": f"Bearer {token}"}
+        )
         if response.status_code >= 400:
             # The body can name principals and endpoints: log the status only.
             raise RuntimeError(f"Foundry evaluations API returned HTTP {response.status_code}")
@@ -96,11 +102,17 @@ def find_or_create_suite(transport: Transport, suite: Suite) -> dict[str, Any]:
     return transport.send("POST", "evals", suite.definition())
 
 
-def check_limits(runs: Sequence[Mapping[str, Any]], *, per_hour: int, per_day: int, now: float) -> None:
-    """Raise when a run is still going or a limit is reached. Counts come from Foundry, so they
-    hold across restarts and replicas. Old 'running' runs are ignored so they cannot block forever."""
+def check_limits(
+    runs: Sequence[Mapping[str, Any]], *, per_hour: int, per_day: int, now: float
+) -> None:
+    """Raise when a run is still going or a limit is reached. Counts come from Foundry, so
+    they hold across restarts and replicas. Old 'running' runs are ignored so they cannot
+    block forever."""
     for run in runs:
-        if run.get("status") in ACTIVE and now - float(run.get("created_at", 0)) < STUCK_AFTER_SECONDS:
+        if (
+            run.get("status") in ACTIVE
+            and now - float(run.get("created_at", 0)) < STUCK_AFTER_SECONDS
+        ):
             raise RuntimeError(f"run_in_progress:{run.get('id')}")
     if sum(now - float(run.get("created_at", 0)) < 3600 for run in runs) >= per_hour:
         raise RuntimeError("run_limit_reached:hour")
@@ -108,7 +120,9 @@ def check_limits(runs: Sequence[Mapping[str, Any]], *, per_hour: int, per_day: i
         raise RuntimeError("run_limit_reached:day")
 
 
-def jsonl_run(items: Sequence[Mapping[str, str]], *, source: str, app_version: str) -> dict[str, Any]:
+def jsonl_run(
+    items: Sequence[Mapping[str, str]], *, source: str, app_version: str
+) -> dict[str, Any]:
     """The app produced the answers (model + its own policy/tools). Foundry only grades them."""
     stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
     return {
@@ -121,7 +135,9 @@ def jsonl_run(items: Sequence[Mapping[str, str]], *, source: str, app_version: s
     }
 
 
-def agent_run(items: Sequence[Mapping[str, str]], *, source: str, agent_name: str) -> dict[str, Any]:
+def agent_run(
+    items: Sequence[Mapping[str, str]], *, source: str, agent_name: str
+) -> dict[str, Any]:
     """Foundry calls a hosted agent for each question (the ELK Burgers pattern)."""
     stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
     return {
@@ -161,12 +177,18 @@ def start_run(
     history = transport.send("GET", f"evals/{eval_id}/runs?limit=50&order=desc").get("data", [])
     check_limits(history, per_hour=per_hour, per_day=per_day, now=time.time())
     items = produce_items()  # only after the limits pass: producing answers costs money
-    return transport.send("POST", f"evals/{eval_id}/runs", jsonl_run(items, source=suite.source, app_version=app_version))
+    return transport.send(
+        "POST",
+        f"evals/{eval_id}/runs",
+        jsonl_run(items, source=suite.source, app_version=app_version),
+    )
 
 
 def error_category(message: str | None) -> str:
     """Raw messages can contain principal IDs, endpoints, and prompts. Show a category instead."""
     text = (message or "").lower()
+    if "unauthorizeduseraction" in text:
+        return "network_blocked"  # looks like RBAC, but in testing it was the account's network
     if any(word in text for word in ("permissiondenied", "401", "403", "lacks the required")):
         return "access_denied"  # check the roles of the app AND the project identity
     if "public access is disabled" in text or "virtual network" in text or "firewall" in text:
@@ -225,7 +247,9 @@ def judge_usage(run: Mapping[str, Any], judge_model: str) -> tuple[int, int, int
     return calls, prompt, completion
 
 
-def output_items(transport: Transport, eval_id: str, run_id: str, pages: int = 3) -> list[dict[str, Any]]:
+def output_items(
+    transport: Transport, eval_id: str, run_id: str, pages: int = 3
+) -> list[dict[str, Any]]:
     if not EVAL_ID.fullmatch(eval_id) or not RUN_ID.fullmatch(run_id):
         raise ValueError("Valid evaluation and run IDs are required.")
     items: list[dict[str, Any]] = []

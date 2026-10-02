@@ -49,6 +49,9 @@ param customDomainCertificateReady bool = false
 @description('SHA-256 (hex) of the presenter key that may start Foundry evaluation runs from the site. Set by tools/set-presenter-key.ps1; the key itself is never stored.')
 param evaluationsPresenterKeySha256 string = ''
 
+@description('Turn on Foundry Evaluations. Needs the Foundry account to accept public (Entra-only) traffic; see docs/adr/0014-foundry-public-endpoint-for-evaluations.md.')
+param evaluationsEnabled bool = true
+
 var ownerAlias = split(budgetContactEmail, '@')[0]
 
 var tags = {
@@ -82,6 +85,7 @@ module resources 'resources.bicep' = {
     customDomainName: customDomainName
     customDomainCertificateReady: customDomainCertificateReady
     evaluationsPresenterKeySha256: evaluationsPresenterKeySha256
+    evaluationsEnabled: evaluationsEnabled
   }
 }
 
