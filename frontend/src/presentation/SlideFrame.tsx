@@ -2,7 +2,12 @@ import type { ReactNode } from "react";
 import { demoQrPath, publicDemoUrl, repoUrl } from "./constants";
 import type { Deck, Slide, SlideBlock, Tone } from "./deck";
 import { useLocalQr } from "./local-qr";
-import { eventDateLabel, hasPresenterDetails, type Presenter } from "./presenter-details";
+import {
+  eventDateLabel,
+  hasPresenterDetails,
+  presenterQrLabel,
+  type Presenter,
+} from "./presenter-details";
 import { Rich } from "./rich-text";
 import { slideSnippet } from "./snippets";
 
@@ -27,18 +32,15 @@ export function QrPair({
       </figure>
       {presenterQr ? (
         <figure>
-          <img
-            src={presenterQr}
-            alt={`QR code. Scan it to open ${presenter.qrLabel || "the presenter link"}.`}
-          />
-          <figcaption>{presenter.qrLabel || "Presenter link"}</figcaption>
+          <img src={presenterQr} alt={`QR code. Scan it to open ${presenterQrLabel(presenter)}.`} />
+          <figcaption>{presenterQrLabel(presenter)}</figcaption>
           <p>{presenter.qrUrl}</p>
         </figure>
       ) : (
         <figure className="qr-placeholder">
           <div aria-hidden="true">＋</div>
-          <figcaption>Presenter QR</figcaption>
-          <p>Add an HTTPS presenter link before the talk.</p>
+          <figcaption>Your QR code</figcaption>
+          <p>Add your LinkedIn or any link in Presenter details.</p>
         </figure>
       )}
     </div>

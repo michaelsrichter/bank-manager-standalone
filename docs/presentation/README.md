@@ -10,7 +10,7 @@ This folder explains the opt-in presentation routes for the Governed AI Bank Ass
 
 The session is for architects and technical decision makers who are building multi-agent solutions. The planned talk time is 44 minutes. Questions happen after the talk.
 
-The flow is: the trust question → the stack → a normal governed run → Microsoft Foundry evaluators (flash the list, then show real results) → how ACS, ASSERT, and the Agent Governance Toolkit fit together, with ASSERT's real config → breaking the rules on purpose → the three checks and the ACS code → observability (why it matters, how it works, the tracing code, then tracing the $60,000 answer live in Azure Monitor) → trust and cost → how to start. The deck does not use a separate trust dashboard.
+The talk assumes the audience already knows _why_ agents need governance. It focuses on the Microsoft solutions, each shown live. The flow is: Microsoft's stack for governed, trusted agents (one map: build, govern, verify, observe, operate at scale) → the technical stack → a normal governed run → Microsoft Foundry evaluators and real results → how ACS, ASSERT, and the Agent Governance Toolkit fit, with ASSERT's real config → Foundry guardrails versus ACS → breaking the rules on purpose → the three checks and the ACS code → observability (what Microsoft gives you, how it works here, the tracing code, then tracing the $60,000 answer live in Azure Monitor) → securing and running agents at scale with Entra, Defender for Cloud, Purview, and Foundry Control Plane → how to start. The deck does not use a separate trust dashboard.
 
 Every product named in the talk, with links, is in [product-links.md](product-links.md).
 
@@ -77,7 +77,9 @@ The Demo Window can frame only same-site routes from a fixed allow-list: the liv
 
 ## Presenter details and privacy
 
-Presenter and event details are saved only in this browser by `localStorage`. They are never sent to the demo API. Use **Remove my details** to delete them. The optional presenter QR link must be HTTPS and must not contain a username or password.
+Presenter and event details are saved only in this browser by `localStorage`. They are never sent to the demo API. Use **Remove my details** to delete them.
+
+**Your QR code.** Paste your LinkedIn profile, or any web link, into **Your link for a QR code**. The app makes the QR code right in the browser with the open-source [node-qrcode](https://github.com/soldair/node-qrcode) library (MIT license), so no outside QR service sees your link. A preview appears as you type, with a **Download QR code (SVG)** link for other slides. The label under the code fills in by itself (for example, **LinkedIn**), or you can type your own. Links that start with `http://` are upgraded to `https://`. Links with a username or password are refused. The QR code shows on the first and last slides, and full screen when you press **Q**.
 
 ## QR codes
 

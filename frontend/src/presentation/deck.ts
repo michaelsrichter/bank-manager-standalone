@@ -86,11 +86,11 @@ export const sessionDeck: Deck = {
   id: "session",
   title: "Can an AI assistant be trusted with a bank account?",
   kicker: "45-minute session",
-  subtitle: "A governed-agent story for partners building multi-agent solutions.",
+  subtitle: "Microsoft's tools for governed, trusted agents, shown working in one app.",
   lengthLabel: "45-minute",
   targetMinutes: 45,
   summary:
-    "A practical talk about written policy, tests, and production evidence around agents that can act.",
+    "A solutions talk: Microsoft Foundry, the Agent Governance Toolkit (ACS), ASSERT, and Azure Monitor governing a live banking agent, plus Entra, Defender, Purview, and Foundry Control Plane for scale.",
   audience:
     "Level 200-300 architects and technical decision makers building multi-agent solutions.",
   prep: [
@@ -110,7 +110,7 @@ export const sessionDeck: Deck = {
       blocks: [
         {
           kind: "lead",
-          text: "A live demo of policy-driven governance for an assistant that can act.",
+          text: "How Microsoft keeps agents governed and trusted, shown working in a live banking assistant.",
         },
         { kind: "qr" },
       ],
@@ -118,8 +118,8 @@ export const sessionDeck: Deck = {
         minutes: 1,
         surface: "slides",
         say: [
-          "Welcome. Today we test whether an AI assistant can be trusted with bank-account actions.",
-          "The answer is not trust the model. The answer is build controls around it.",
+          "Welcome. You already know agents need governance. This talk is about the Microsoft tools that deliver it.",
+          "Everything you see runs live in one public app: Microsoft Foundry, the Agent Governance Toolkit, ASSERT, and Azure Monitor.",
         ],
       },
     },
@@ -131,13 +131,16 @@ export const sessionDeck: Deck = {
         {
           kind: "steps",
           items: [
-            { title: "Problem", text: "AI can choose tools and take actions." },
-            { title: "Pattern", text: "The model proposes. Policy decides." },
-            { title: "Demo", text: "Two lanes show unsafe and governed behavior." },
-            { title: "Evaluate", text: "Microsoft Foundry grades the answers." },
-            { title: "Govern", text: "ACS, ASSERT, and the toolkit, then we break the rules." },
+            { title: "Map", text: "Microsoft's stack for governed, trusted agents." },
+            { title: "Demo", text: "A banking assistant, with and without governance." },
+            { title: "Verify", text: "Microsoft Foundry evaluations and ASSERT." },
+            {
+              title: "Govern",
+              text: "Foundry guardrails and ACS from the Agent Governance Toolkit, then we break the rules.",
+            },
             { title: "Observe", text: "Trace any answer, and any decision, in Azure Monitor." },
-            { title: "Start", text: "How to use the pattern in your own agent." },
+            { title: "Scale", text: "Entra, Defender, Purview, and Foundry Control Plane." },
+            { title: "Start", text: "Your first steps with these tools." },
           ],
         },
       ],
@@ -145,8 +148,68 @@ export const sessionDeck: Deck = {
         minutes: 1,
         surface: "slides",
         say: [
-          "We will move quickly.",
-          "Questions come after the 45-minute talk so the live path stays crisp.",
+          "You already know why agents need governance, so we will skip the theory.",
+          "This is a tour of what Microsoft gives you, and each piece runs live.",
+          "Questions come after the talk so the live path stays crisp.",
+        ],
+      },
+    },
+    {
+      id: "ms-stack",
+      chip: "Microsoft stack",
+      title: "Microsoft's stack for governed, trusted agents",
+      blocks: [
+        {
+          kind: "table",
+          caption:
+            "Each job has a Microsoft tool. The last column shows what runs live in this demo.",
+          headers: ["Job", "Microsoft solution", "In this demo"],
+          rows: [
+            [
+              "Build",
+              "**Microsoft Foundry**: models, Foundry Agent Service, and guardrails such as content filters and Prompt Shields",
+              "GPT-4.1 models with content filters on",
+            ],
+            [
+              "Govern",
+              "**Agent Governance Toolkit**: the ACS policy engine, identity, audit, and an MCP security gateway. **Microsoft Entra**: managed identities, and Entra Agent ID for agents",
+              "ACS with Rego rules on every tool call; managed identity, no keys",
+            ],
+            [
+              "Verify",
+              "**Microsoft Foundry evaluators** and the AI Red Teaming Agent. **ASSERT** for your own written rules",
+              "An 18-question Foundry evaluation; an ASSERT red-team comparison",
+            ],
+            [
+              "Observe",
+              "**Azure Monitor Application Insights** with OpenTelemetry; Microsoft Foundry tracing and monitoring",
+              "Every answer has a Trace ID you can open",
+            ],
+            [
+              "Operate at scale",
+              "**Foundry Control Plane**, **Microsoft Defender for Cloud**, and **Microsoft Purview**",
+              "Next steps; not set up here",
+            ],
+          ],
+        },
+        {
+          kind: "launch",
+          links: [{ label: "Products and links", href: "/#/docs/presentation/product-links.md" }],
+        },
+      ],
+      notes: {
+        minutes: 2,
+        surface: "slides",
+        say: [
+          "Here is the whole story on one slide. For every governance job, Microsoft has a tool.",
+          "Build on Microsoft Foundry. Its guardrails catch harmful content and prompt attacks.",
+          "Govern with the Agent Governance Toolkit. Its ACS engine enforces your business rules on every tool call. Microsoft Entra gives the app, and soon each agent, a real identity.",
+          "Verify with Microsoft Foundry evaluators and ASSERT. Observe with Azure Monitor and Foundry tracing.",
+          "Operate at scale with Foundry Control Plane, Defender for Cloud, and Purview.",
+          "The rest of the talk shows the first four running live, then where to go next.",
+        ],
+        watch: [
+          "Foundry agent guardrails and parts of Foundry Control Plane are in preview. The Agent Governance Toolkit is in Public Preview.",
         ],
       },
     },
@@ -196,7 +259,7 @@ export const sessionDeck: Deck = {
         },
       ],
       notes: {
-        minutes: 2,
+        minutes: 1,
         surface: "slides",
         say: [
           "Here is the whole stack, so you can map it to your own.",
@@ -204,114 +267,6 @@ export const sessionDeck: Deck = {
           "Governance comes from the Agent Governance Toolkit. Its ACS SDK has a Rust core, and Open Policy Agent runs our rules.",
           "Everything reports to Azure Monitor with OpenTelemetry. We will open those traces later.",
           "It is all one public repo, deployed with the Azure Developer CLI. Every code slide links to the exact lines on GitHub.",
-        ],
-      },
-    },
-    {
-      id: "problem",
-      chip: "Problem",
-      title: "The problem: AI that can act",
-      blocks: [
-        {
-          kind: "compare",
-          left: {
-            title: "A prompt rule",
-            tone: "warning",
-            items: [
-              "Lives inside model instructions",
-              "Can be missed or overridden",
-              "Is hard to audit after the fact",
-            ],
-          },
-          right: {
-            title: "A control",
-            tone: "success",
-            items: ["Runs outside the model", "Has a written decision", "Can be tested and logged"],
-          },
-        },
-        { kind: "quote", text: "A good model is not the same thing as a governable agent." },
-      ],
-      notes: {
-        minutes: 1,
-        surface: "slides",
-        say: [
-          "Prompts are important, but prompt rules are still requests.",
-          "When an assistant can call tools, a missed rule can become an action.",
-          "A bank account makes the risk obvious.",
-        ],
-      },
-    },
-    {
-      id: "model-policy",
-      chip: "Idea",
-      title: "The model proposes. Policy decides.",
-      blocks: [
-        {
-          kind: "chain",
-          label: "Request path",
-          items: [
-            "User asks",
-            "Model chooses one tool",
-            "Policy checks the call",
-            "Tool runs, asks a person, changes output, or stops",
-          ],
-        },
-        {
-          kind: "lead",
-          text: "The model chooses the likely tool. Deterministic rules make the allow, deny, approve, and redact decisions.",
-        },
-      ],
-      notes: {
-        minutes: 1,
-        surface: "slides",
-        say: [
-          "This is the core pattern for the whole talk.",
-          "The model helps understand the user's words.",
-          "The model does not get the final say on money movement or private data.",
-        ],
-      },
-    },
-    {
-      id: "trust-stack",
-      chip: "Trust stack",
-      title: "Four layers, four questions",
-      blocks: [
-        {
-          kind: "table",
-          caption: "Each layer answers a different question. No single layer is enough.",
-          headers: ["Layer", "Question it answers", "Role in the demo"],
-          rows: [
-            [
-              "Microsoft Foundry evaluators",
-              "Is each answer correct, safe, and on task?",
-              "18 graded questions, run from the Evaluations page.",
-            ],
-            [
-              "Agent Governance Toolkit: ACS",
-              "Is this person allowed to do this operation now?",
-              "Runtime policy enforcement with OPA and Rego.",
-            ],
-            [
-              "Agent Governance Toolkit family: ASSERT",
-              "Does the agent still meet its written rules?",
-              "Red-team comparison of the no-rules and governed lanes.",
-            ],
-            [
-              "Observability",
-              "What happened, and can we prove it?",
-              "Every answer has a Trace ID you can open in Azure Monitor.",
-            ],
-          ],
-        },
-      ],
-      notes: {
-        minutes: 1,
-        surface: "slides",
-        say: [
-          "Governance is not only refusal.",
-          "It means reliably doing what is allowed and reliably not doing what is not allowed.",
-          "That needs quality checks, runtime enforcement, regression tests, and evidence.",
-          "We will see each layer live, in that order.",
         ],
       },
     },
@@ -634,6 +589,53 @@ export const sessionDeck: Deck = {
       },
     },
     {
+      id: "guardrails",
+      chip: "Guardrails",
+      title: "Two kinds of guardrails, and you want both",
+      blocks: [
+        {
+          kind: "compare",
+          left: {
+            title: "Microsoft Foundry guardrails",
+            tone: "info",
+            items: [
+              "Managed classifiers for harmful content and prompt attacks",
+              "Configured in Microsoft Foundry, without code",
+              "For agents: checks on user input, tool calls, tool responses, and output (preview)",
+            ],
+          },
+          right: {
+            title: "ACS in the Agent Governance Toolkit",
+            tone: "success",
+            items: [
+              "Your business rules as code: who, which account, how much",
+              "The same answer every time: allow, deny, escalate, or redact",
+              "Runs inside your app, with any model or cloud",
+            ],
+          },
+        },
+        {
+          kind: "lead",
+          text: "Foundry guardrails ask: **is this content harmful?** ACS asks: **is this person allowed to do this, right now?**",
+        },
+        {
+          kind: "honest",
+          text: "This app calls the model directly, so it uses Foundry's model-level content filters. Agent guardrails apply to agents in Foundry Agent Service.",
+        },
+      ],
+      notes: {
+        minutes: 2,
+        surface: "slides",
+        say: [
+          "Microsoft gives you two kinds of guardrails, and they answer different questions.",
+          "Foundry guardrails are managed classifiers. They catch harmful content and prompt attacks, and for agents they can also check tool calls and tool responses.",
+          "But a classifier cannot know that Riley is not assigned to account A-2001, or that transfers over fifty thousand dollars are never allowed. Those are your business rules.",
+          "That is ACS from the Agent Governance Toolkit: your rules, as code, checked on every tool call.",
+          "Now let us break some of those rules on purpose.",
+        ],
+      },
+    },
+    {
       id: "live-role",
       chip: "Live 2",
       title: "Not your account, or not your role",
@@ -943,38 +945,34 @@ export const sessionDeck: Deck = {
       },
     },
     {
-      id: "obs-why",
-      chip: "Why observe",
+      id: "ms-observe",
+      chip: "Observe",
       section: "Observability",
-      title: "Why observability matters for agents",
+      title: "Observability: what Microsoft gives you",
       blocks: [
-        {
-          kind: "quote",
-          text: "If you cannot show what the agent did and why, you cannot prove it was governed.",
-        },
         {
           kind: "cards",
           columns: 2,
           items: [
             {
-              title: "Find problems fast",
-              text: "An answer is wrong or slow? Its Trace ID shows every step: the model call, each policy check, and each tool.",
+              title: "Azure Monitor Application Insights",
+              text: "Send standard OpenTelemetry, get end-to-end traces. Find a wrong or slow answer by its Trace ID in minutes.",
               tone: "info",
             },
             {
-              title: "Prove every decision",
-              text: "Each allow, deny, approval, and redaction is recorded with the rule that made it. That is your audit trail.",
+              title: "Microsoft Foundry tracing",
+              text: "The same agent steps, model calls, and tool calls in the Foundry portal, next to your evaluations.",
+              tone: "accent",
+            },
+            {
+              title: "Workbooks, dashboards, and alerts",
+              text: "Proof for auditors: every allow, deny, approval, and redaction, with the rule that made it.",
               tone: "success",
             },
             {
-              title: "Catch trouble early",
-              text: "Dashboards show errors, throttling, unexpected denials, slow tools, and cost before users complain.",
+              title: "Foundry Control Plane",
+              text: "One view of every agent, model, and tool across projects, with monitoring and compliance.",
               tone: "warning",
-            },
-            {
-              title: "Without new privacy risk",
-              text: "No prompts, answers, or account data are logged. You get evidence without copying private data.",
-              tone: "accent",
             },
           ],
         },
@@ -983,10 +981,10 @@ export const sessionDeck: Deck = {
         minutes: 1,
         surface: "slides",
         say: [
-          "Agents are not predictable like normal code. The same question can take a different path, and the path can include actions.",
-          "So for an agent, observability is not only for fixing bugs. It is how you prove the rules worked.",
-          "When an auditor or a customer asks why the agent did something, you need an answer in minutes, not a guess.",
-          "And you need it without logging the private data you were trying to protect.",
+          "Governance you cannot see, you cannot prove. Microsoft covers the evidence side too.",
+          "Application Insights takes standard OpenTelemetry, so any agent in any language can send to it.",
+          "Microsoft Foundry shows the same traces next to your evaluations. Foundry Control Plane rolls them up across your whole agent fleet.",
+          "None of it needs your prompts or customer data. This demo logs decisions, not content.",
         ],
       },
     },
@@ -1153,39 +1151,43 @@ export const sessionDeck: Deck = {
       },
     },
     {
-      id: "trust-compliance",
-      chip: "Trust",
-      title: "Trust, compliance, and cost",
+      id: "scale",
+      chip: "Scale",
+      title: "Secure and run agents at scale",
       blocks: [
         {
           kind: "cards",
           columns: 3,
           items: [
             {
-              title: "Managed identity",
-              text: "The app reaches Azure resources without storing keys.",
+              title: "Microsoft Entra",
+              text: "Here: a managed identity, so no keys anywhere. Next: Entra Agent ID gives each agent its own identity, access rules, and audit.",
               tone: "success",
             },
             {
-              title: "Private path to the model",
-              text: "The app calls the model over a private endpoint. API keys are off; only Microsoft Entra ID sign-in works.",
+              title: "Microsoft Defender for Cloud",
+              text: "Next: AI threat protection, generally available, alerts on threats to your Foundry apps and agents.",
+              tone: "warning",
+            },
+            {
+              title: "Microsoft Purview",
+              text: "Next: data loss prevention, audit, and compliance for what flows through Foundry apps and agents.",
+              tone: "info",
+            },
+            {
+              title: "Foundry Control Plane",
+              text: "Next: inventory every agent, model, and tool, check guardrail compliance, and add an AI gateway.",
+              tone: "accent",
+            },
+            {
+              title: "Private and filtered",
+              text: "Here: a private endpoint to the model, Entra-only access, content filters on, and synthetic data.",
               tone: "success",
-            },
-            {
-              title: "Synthetic data",
-              text: "No real customers, money, or bank system are connected.",
-              tone: "info",
-            },
-            { title: "Content filters", text: "Azure AI content filters are on.", tone: "success" },
-            {
-              title: "No prompt logs",
-              text: "Telemetry records operational data, not prompt text.",
-              tone: "info",
             },
             {
               title: "Low cost",
-              text: "About USD 18–23 a month. About USD 0.001 per GPT-4.1 request, 0.0002 on GPT-4.1 mini.",
-              tone: "accent",
+              text: "Here: about USD 18–23 a month, and about USD 0.001 per GPT-4.1 request.",
+              tone: "info",
             },
           ],
         },
@@ -1196,46 +1198,7 @@ export const sessionDeck: Deck = {
               label: "Cost notes",
               href: "https://github.com/michaelsrichter/bank-manager-standalone/blob/main/docs/cost/cost-to-run.md",
             },
-          ],
-        },
-      ],
-      notes: {
-        minutes: 1,
-        surface: "slides",
-        say: [
-          "Agent governance does not replace platform security.",
-          "The demo also uses managed identity, a private path to the model, content filters, synthetic data, and an HTTPS-only domain.",
-          "The model also accepts Entra-only traffic from the internet so Microsoft Foundry can grade evaluations. There are no keys to steal.",
-          "And it is cheap. The governance layer is not the cost driver; hosting and observability are.",
-        ],
-      },
-    },
-    {
-      id: "start",
-      chip: "Start",
-      title: "How to start",
-      blocks: [
-        {
-          kind: "steps",
-          items: [
-            {
-              title: "Fork the repo",
-              text: "Start from a working reference instead of a blank page.",
-            },
-            {
-              title: "Install the Agent Governance Toolkit",
-              text: "Use `pip install` for the toolkit and ACS package used by your app.",
-            },
-            { title: "Write one policy", text: "Begin with one role, one tool, and one rule." },
-            {
-              title: "Test both ways",
-              text: "Prove allowed work still succeeds and denied work still fails, with ASSERT or Microsoft Foundry evaluations.",
-            },
-            { title: "Wire telemetry", text: "Keep the evidence trail from day one." },
-            {
-              title: "Start read-only",
-              text: "Add money movement or write tools only after governance is tested.",
-            },
+            { label: "Products and links", href: "/#/docs/presentation/product-links.md" },
           ],
         },
       ],
@@ -1243,9 +1206,59 @@ export const sessionDeck: Deck = {
         minutes: 2,
         surface: "slides",
         say: [
-          "The practical starting point is small.",
-          "Pick one tool and one written rule.",
-          "Make that rule visible in tests and telemetry before adding more power.",
+          "One governed agent is a demo. Hundreds of agents is an operations job, and Microsoft has tools for that too.",
+          "Microsoft Entra gives agents identities. Here, the app uses a managed identity, so there are no keys to steal. Entra Agent ID extends that to each agent.",
+          "Defender for Cloud watches for threats to your Foundry apps and agents. Purview applies data loss prevention and audit to what flows through them.",
+          "Foundry Control Plane is the fleet view: every agent, model, and tool, and whether its guardrails are in place.",
+          "Those four are next steps; this demo does not set them up. What it does have: a private path to the model, content filters, and synthetic data, for about twenty dollars a month.",
+        ],
+        watch: [
+          "The model also accepts Entra-only traffic from the internet so Microsoft Foundry can grade evaluations. There are no keys to steal.",
+        ],
+      },
+    },
+    {
+      id: "start",
+      chip: "Start",
+      title: "How to start with Microsoft's tools",
+      blocks: [
+        {
+          kind: "steps",
+          items: [
+            {
+              title: "Build on Microsoft Foundry",
+              text: "Deploy a model with guardrails on. Use a managed identity, not keys.",
+            },
+            {
+              title: "Add the Agent Governance Toolkit",
+              text: "Write one ACS policy for one tool: one role, one rule.",
+            },
+            {
+              title: "Verify both ways",
+              text: "Run Microsoft Foundry evaluations and ASSERT in CI: allowed work succeeds, denied work fails.",
+            },
+            {
+              title: "Observe from day one",
+              text: "Send OpenTelemetry to Azure Monitor. Give every answer a Trace ID.",
+            },
+            {
+              title: "Scale",
+              text: "Register agents in Foundry Control Plane. Turn on Defender for Cloud and Purview.",
+            },
+            {
+              title: "Or fork this repo",
+              text: "Everything you saw today, ready to deploy with one command.",
+            },
+          ],
+        },
+      ],
+      notes: {
+        minutes: 1,
+        surface: "slides",
+        say: [
+          "Start small, with a Microsoft tool at every step.",
+          "One model with guardrails, one tool, one ACS rule, tests both ways, and telemetry from day one.",
+          "Then scale out with Control Plane, Defender, and Purview. Or fork this repo and start from a working system.",
         ],
       },
     },
@@ -1256,11 +1269,11 @@ export const sessionDeck: Deck = {
       blocks: [
         {
           kind: "quote",
-          text: "Building intelligence with agents is the easier half. Governance deserves equal or more focus.",
+          text: "Microsoft gives you a tool for every part of agent trust. Use them together.",
         },
         {
           kind: "lead",
-          text: "Trust comes from policy you can read, tests you can rerun, and evidence you can show.",
+          text: "Build and verify in **Microsoft Foundry**. Govern with the **Agent Governance Toolkit**. Prove it with **Azure Monitor**. Secure it with **Entra**, **Defender**, and **Purview**.",
         },
         {
           kind: "launch",
@@ -1271,9 +1284,9 @@ export const sessionDeck: Deck = {
         minutes: 1,
         surface: "slides",
         say: [
-          "The talk has one message.",
-          "Use the model for intelligence, but use policy, tests, and evidence for trust.",
-          "That is how an assistant becomes governable.",
+          "If you remember one slide, remember the stack.",
+          "Foundry to build and verify, the toolkit to govern, Azure Monitor to prove it, and Entra, Defender, and Purview to secure it at scale.",
+          "Every link is on the products page.",
         ],
       },
     },
@@ -1285,7 +1298,7 @@ export const sessionDeck: Deck = {
         { kind: "qr" },
         {
           kind: "lead",
-          text: "Scan the demo QR code to open the public site. Scan the presenter QR code if the presenter added one.",
+          text: "Left: try the demo yourself. Right: connect with the presenter.",
         },
       ],
       notes: {
@@ -1293,7 +1306,7 @@ export const sessionDeck: Deck = {
         surface: "slides",
         say: [
           "Thank you. Please scan the QR code to try the demo.",
-          "If I added a presenter link, the second QR code is mine.",
+          "The second QR code goes to my page. Let us connect.",
           "Now we have time for questions.",
         ],
       },

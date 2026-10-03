@@ -13,6 +13,7 @@ import {
   emptyPresenter,
   eventDateLabel,
   normalizePresenterUrl,
+  presenterQrLabel,
   validEventDate,
 } from "./presenter-details";
 import { PresenterDetailsButton } from "./PresenterDetailsDialog";
@@ -170,46 +171,67 @@ describe("presentation content", () => {
 });
 
 describe("presenter details", () => {
-  it("accepts only https links and real dates", () => {
+  it("accepts only https links (upgrading http) and real dates, and labels known sites", () => {
     expect(normalizePresenterUrl("example.com/me")).toBe("https://example.com/me");
-    expect(normalizePresenterUrl("http://example.com")).toBeNull();
-    expect(normalizePresenterUrl("https://user:pass@example.com")).toBeNull();
+    expect(normalizePresenterUrl("http://example.com")).toBe("https://example.com/");
+    expect(normalizePresenterUrl("ftp://example.com")).toBeNull();
+    expect(normalizePresenterUrl("https://user:pw@example.com")).toBeNull();
+    expect(presenterQrLabel({ qrLabel: "", qrUrl: "linkedin.com/in/ada" })).toBe("LinkedIn");
+    expect(presenterQrLabel({ qrLabel: "", qrUrl: "https://www.example.org/x" })).toBe(
+      "example.org",
+    );
+    expect(presenterQrLabel({ qrLabel: "My site", qrUrl: "https://github.com/ada" })).toBe(
+      "My site",
+    );
+    expect(presenterQrLabel({ qrLabel: "", qrUrl: "" })).toBe("Presenter link");
     expect(validEventDate("2026-11-05")).toBe("2026-11-05");
     expect(validEventDate("2026-02-30")).toBe("");
     expect(eventDateLabel({ eventDate: "2026-11-05" })).toBe("November 5, 2026");
   });
 
-  it("saves sanitized details and rejects unsafe QR links", async () => {
+  it("previews the QR code while typing, saves sanitized details, and rejects unsafe links", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
     render(<PresenterDetailsButton presenter={emptyPresenter} onSave={onSave} />);
     await user.click(screen.getByRole("button", { name: "Presenter details" }));
     await user.type(screen.getByLabelText("Name"), "  Ada   Lovelace  ");
-    await user.type(screen.getByLabelText("Presenter QR HTTPS link"), "javascript:alert(1)");
+    const link = screen.getByLabelText("Your link for a QR code");
+    await user.type(link, "javascript:alert(1)");
+    expect(screen.getByText(/can't become a QR code yet/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save details" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("HTTPS");
-    await user.clear(screen.getByLabelText("Presenter QR HTTPS link"));
-    await user.type(screen.getByLabelText("Presenter QR HTTPS link"), "example.com/ada");
+    expect(screen.getByRole("alert")).toHaveTextContent("https://");
+    await user.clear(link);
+    await user.type(link, "http://www.linkedin.com/in/ada");
+    const preview = await screen.findByAltText(/Preview of your QR code/);
+    expect(preview.getAttribute("src")).toMatch(/^data:image\/svg\+xml/);
+    expect(screen.getByRole("link", { name: "Download QR code (SVG)" })).toHaveAttribute(
+      "download",
+      "presenter-qr.svg",
+    );
+    expect(screen.getByText("LinkedIn")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save details" }));
     expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Ada Lovelace", qrUrl: "https://example.com/ada" }),
+      expect.objectContaining({
+        name: "Ada Lovelace",
+        qrUrl: "https://www.linkedin.com/in/ada",
+      }),
     );
   });
 });
 
 describe("slides and script pages", () => {
   it("handles keys, hash links, notes, and ignores keys typed in fields", async () => {
-    window.history.pushState(null, "", "/presentation/session#problem");
+    window.history.pushState(null, "", "/presentation/session#ms-stack");
     const user = userEvent.setup();
     render(<SlidesPage deck={sessionDeck} presenter={emptyPresenter} onSavePresenter={vi.fn()} />);
-    expect(screen.getByText(/4 \/ 28: Problem/)).toBeInTheDocument();
+    expect(screen.getByText(/3 \/ 27: Microsoft stack/)).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
-    expect(window.location.hash).toBe("#model-policy");
+    expect(window.location.hash).toBe("#stack");
     await user.keyboard("n");
     expect(screen.getByLabelText("Speaker notes")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Presenter details" }));
     await user.type(screen.getByLabelText("Name"), "x{ArrowRight}");
-    expect(window.location.hash).toBe("#model-policy");
+    expect(window.location.hash).toBe("#stack");
   });
 
   it("renders the printable script and presenter details on title slide", () => {
@@ -289,7 +311,7 @@ describe("two-screen mode", () => {
     view.rerender(both("light"));
     await waitFor(() => expect(onThemeChange).toHaveBeenLastCalledWith("light"));
     expect(document.documentElement.dataset.theme).toBe("light");
-    await userEvent.click(screen.getByRole("button", { name: /^7 Meet demo/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^5 Meet demo/ }));
     await userEvent.click(screen.getByRole("button", { name: /Show Live demo/ }));
     await waitFor(() => expect(screen.getByTitle("Live demo (live site)")).toBeInTheDocument());
     expect(screen.getByTitle("Live demo (live site)")).toHaveAttribute("src", "/#/demo");

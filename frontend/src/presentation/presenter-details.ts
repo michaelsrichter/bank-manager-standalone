@@ -37,7 +37,9 @@ export function normalizePresenterUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return "";
-  const candidate = /^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  // Pasted links often start with http://. Upgrade them; every other scheme is refused.
+  const upgraded = trimmed.replace(/^http:\/\//i, "https://");
+  const candidate = /^[a-z][a-z\d+.-]*:/i.test(upgraded) ? upgraded : `https://${upgraded}`;
   if (candidate.length > presenterLimits.qrUrl) return null;
   try {
     const url = new URL(candidate);
@@ -47,6 +49,23 @@ export function normalizePresenterUrl(value: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+const KNOWN_SITES: [RegExp, string][] = [
+  [/(^|\.)linkedin\.com$/, "LinkedIn"],
+  [/(^|\.)github\.com$/, "GitHub"],
+  [/(^|\.)(x|twitter)\.com$/, "X"],
+  [/(^|\.)youtube\.com$|^youtu\.be$/, "YouTube"],
+  [/(^|\.)sessionize\.com$/, "Sessionize"],
+];
+
+/** The label under the presenter QR code: the typed label, or a name for the link's site. */
+export function presenterQrLabel(presenter: Pick<Presenter, "qrLabel" | "qrUrl">) {
+  if (presenter.qrLabel) return presenter.qrLabel;
+  const safe = normalizePresenterUrl(presenter.qrUrl);
+  if (!safe) return "Presenter link";
+  const host = new URL(safe).hostname.replace(/^www\./, "");
+  return KNOWN_SITES.find(([pattern]) => pattern.test(host))?.[1] ?? host;
 }
 
 export function validEventDate(value: unknown) {

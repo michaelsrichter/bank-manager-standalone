@@ -3,17 +3,27 @@
 This page lists every product named in the talk, what each one does in plain
 language, and where to learn more. Links were checked on 2026-10-02.
 
+The talk is organized by job: **build** (Microsoft Foundry), **govern** (Agent
+Governance Toolkit and Microsoft Entra), **verify** (Foundry evaluators and
+ASSERT), **observe** (Azure Monitor and Foundry tracing), and **operate at scale**
+(Foundry Control Plane, Defender for Cloud, and Purview).
+
 ## How the pieces fit
 
-| Product                                    | Its job, in one sentence                                                                        | Used in this demo?                                                 |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **Microsoft Foundry**                      | Hosts the AI models and grades answers with evaluators.                                         | Yes: GPT-4.1 models, tracing, and the Evaluations page             |
-| **Azure AI Evaluation SDK**                | Runs Foundry-style quality and safety evaluators from your own code or CI.                      | Not directly. The app calls the Foundry evaluation service instead |
-| **Azure AI Content Safety**                | Checks text and images for harmful content. It covers safety only, not quality.                 | Yes, through the model's content filters                           |
-| **Agent Governance Toolkit (AGT)**         | The umbrella toolkit for governing agents: policy, identity, audit, and red-team tools.         | Yes: it supplies the ACS SDK                                       |
-| **ACS (Agent Control Specification)**      | AGT's policy engine. It _defines and enforces_ rules at set points while the agent runs.        | Yes: input, pre-tool-call, and post-tool-call checks               |
-| **ASSERT**                                 | _Verifies_ behavior. It turns written rules into test conversations and has a judge score them. | Yes: an offline red-team comparison of the two lanes               |
-| **Azure Monitor and Application Insights** | Collects traces, logs, and metrics so you can prove what happened.                              | Yes: dashboards, workbooks, and trace links                        |
+| Product                                               | Its job, in one sentence                                                                                                                                                                 | Used in this demo?                                                                                    |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Microsoft Foundry**                                 | Hosts the AI models and grades answers with evaluators.                                                                                                                                  | Yes: GPT-4.1 models, tracing, and the Evaluations page                                                |
+| **Azure AI Evaluation SDK**                           | Runs Foundry-style quality and safety evaluators from your own code or CI.                                                                                                               | Not directly. The app calls the Foundry evaluation service instead                                    |
+| **Azure AI Content Safety**                           | Checks text and images for harmful content. It covers safety only, not quality.                                                                                                          | Yes, through the model's content filters                                                              |
+| **Agent Governance Toolkit (AGT)**                    | The umbrella toolkit for governing agents: policy, identity, audit, and red-team tools.                                                                                                  | Yes: it supplies the ACS SDK                                                                          |
+| **ACS (Agent Control Specification)**                 | AGT's policy engine. It _defines and enforces_ rules at set points while the agent runs.                                                                                                 | Yes: input, pre-tool-call, and post-tool-call checks                                                  |
+| **ASSERT**                                            | _Verifies_ behavior. It turns written rules into test conversations and has a judge score them.                                                                                          | Yes: an offline red-team comparison of the two lanes                                                  |
+| **Azure Monitor and Application Insights**            | Collects traces, logs, and metrics so you can prove what happened.                                                                                                                       | Yes: dashboards, workbooks, and trace links                                                           |
+| **Microsoft Foundry guardrails**                      | Managed checks for harmful content and prompt attacks (Prompt Shields). For agents, they can check user input, tool calls, tool responses, and output (agent guardrails are in preview). | Model-level content filters only. The app calls the model directly, not through Foundry Agent Service |
+| **Foundry Control Plane**                             | One place to see and govern every agent, model, and tool across projects: inventory, monitoring, compliance, and security.                                                               | No. A next step                                                                                       |
+| **Microsoft Entra Agent ID**                          | Gives each AI agent its own identity, access rules, and audit in Microsoft Entra.                                                                                                        | No. The app uses a managed identity today                                                             |
+| **Microsoft Defender for Cloud AI threat protection** | Alerts on threats to Foundry apps and agents. Generally available.                                                                                                                       | No. A next step                                                                                       |
+| **Microsoft Purview for Foundry**                     | Data loss prevention, audit, and compliance for what flows through Foundry apps and agents.                                                                                              | No. A next step                                                                                       |
 
 A simple way to remember it: **ACS enforces, ASSERT verifies, Microsoft Foundry
 evaluates, and Azure Monitor records.** ACS is part of AGT. ASSERT is a separate
@@ -55,6 +65,17 @@ Some evaluators are in preview. The reference page marks which ones. This demo
 uses **String Checker** for exact rules, **Model Labeler** as the judge, and
 **Intent Resolution** for information only. See
 [the evaluations guide](../evaluations/README.md).
+
+## Guardrails, scale, and security
+
+- Foundry guardrails and controls: <https://learn.microsoft.com/azure/foundry/guardrails/guardrails-overview>
+- Prompt Shields: <https://learn.microsoft.com/azure/foundry/openai/concepts/content-filter-prompt-shields>
+- Foundry Agent Service: <https://learn.microsoft.com/azure/foundry/agents/overview>
+- Foundry Control Plane: <https://learn.microsoft.com/azure/foundry/control-plane/overview>
+- Microsoft Entra Agent ID: <https://learn.microsoft.com/entra/agent-id/what-is-microsoft-entra-agent-id>
+- Defender for Cloud AI threat protection: <https://learn.microsoft.com/azure/defender-for-cloud/ai-threat-protection>
+- Microsoft Purview for Microsoft Foundry: <https://learn.microsoft.com/purview/ai-azure-foundry>
+- Cloud Adoption Framework, building secure agents: <https://learn.microsoft.com/azure/cloud-adoption-framework/ai-agents/build-secure-process>
 
 ## Azure AI Evaluation SDK and Azure AI Content Safety
 

@@ -40,6 +40,31 @@
 .presenter-dialog::backdrop {
   background: rgb(0 0 0 / 45%);
 }
+.field-hint {
+  margin: -0.3rem 0 0.4rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.field-hint.warn {
+  color: var(--warn-text);
+}
+.qr-preview figure {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin: 0.4rem 0 0.8rem;
+}
+.qr-preview img {
+  width: 132px;
+  height: 132px;
+  background: #fff;
+  border-radius: 8px;
+}
+.qr-preview figcaption {
+  display: grid;
+  gap: 0.3rem;
+  overflow-wrap: anywhere;
+}
 .presenter-dialog label {
   display: grid;
   gap: 0.25rem;
