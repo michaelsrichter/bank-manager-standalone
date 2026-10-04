@@ -11,9 +11,9 @@ step took — without ever seeing what anyone typed.
 
 | View | What it shows | How to open |
 |---|---|---|
-| **IDs and observability links** (under each answer in the demo) | The answer's trace ID, the chat's conversation ID, the model, and the answer time, each with a **Copy** button. Links open this answer in Logs, the Answer review workbook, and Application Insights. Ready-to-paste queries for one answer and for the whole chat. Closed by default; practice answers get no links | Open the panel under any answer |
+| **IDs and observability links** (under each answer in the demo) | The answer's trace ID, the chat's conversation ID, the model, and the answer time, each with a **Copy** button. Links open both lanes side by side in Logs, this answer's steps grouped by lane, the Answer review workbook, and Application Insights. Ready-to-paste queries for both lanes, one answer, and the whole chat. Closed by default; practice answers get no links | Open the panel under any answer |
 | **Azure Workbook** “Governed AI Bank Assistant — telemetry” | Key numbers, then 7 sections: 1 Overview (requests, 5xx, p50/p95 by release), 2 AI models (Foundry metrics, tokens, cost estimate, latency, 429 throttling, content-filter blocks), 3 Agents and tools (runs, tool success rate, slowest tools, span timing), 4 Security boundaries (`denied_expected` vs `denied_unexpected`, rules, prevented tool calls, ACS metrics, approvals, rate limits), 5 Azure services (Foundry, Container Registry, Container Apps logs), 6 Health (`health_check` results), 7 Recent failures (with trace IDs). Each section says what “good” looks like | `azd env get-value AZURE_TELEMETRY_WORKBOOK_URL`, or portal → resource group → Workbooks |
-| **Azure Workbook** “Governed AI Bank Assistant — answer review” | One answer (paste a trace ID) or one whole chat (paste a conversation ID): where the time went, every step in order with the policy decision, problems, and a one-row chat summary | `azd env get-value AZURE_ANSWER_REVIEW_WORKBOOK_URL`, or the link in the demo's panel |
+| **Azure Workbook** “Governed AI Bank Assistant — answer review” | One answer (paste a trace ID) or one whole chat (paste a conversation ID): the two lanes side by side, where the time went, every step grouped by lane with the policy decision, problems, and a one-row chat summary with tool runs per lane | `azd env get-value AZURE_ANSWER_REVIEW_WORKBOOK_URL`, or the link in the demo's panel |
 | **Azure portal dashboard** “Governed AI Bank Assistant” | 12 tiles: links; comparisons per 5 min by governed outcome; cost; the same tool call in both lanes (including how often the tool actually ran); which rule decided; model calls and cost; app-measured model p95; Foundry server latency, requests, and tokens; requests by route; latest agent runs | `azd env get-value AZURE_TELEMETRY_DASHBOARD_URL`, or portal → Dashboard hub |
 | **Application Insights** | Transaction search (full span tree per trace ID), Live Metrics, Application map, Failures, Performance | Link on the dashboard |
 | **Microsoft Foundry → project `bank-manager` → Tracing** | GenAI spans (`invoke_agent`, `chat`, `execute_tool`) via the project’s App Insights connection | Link on the dashboard (needs portal network access to Foundry; see below) |
@@ -24,6 +24,47 @@ deployed by [`infra/modules/observability.bicep`](../../infra/modules/observabil
 The Answer review workbook is
 [`infra/dashboards/answer-review.workbook.json`](../../infra/dashboards/answer-review.workbook.json).
 Change these files, not only the portal; portal-only edits are lost on the next deploy.
+
+## Split by lane
+
+Every answer runs twice: once with **no rules** (unsafe on purpose) and once **governed by
+policy**. The trace splits the same way, so Azure Monitor can show the two lanes apart:
+
+```text
+invoke_agent bank-manager
+├─ chat gpt-4.1
+├─ lane baseline     (no rules)
+│  └─ execute_tool create_transfer
+└─ lane governed     (governed by policy)
+   ├─ acs.evaluate input
+   └─ acs.evaluate pre_tool_call        denied: payment_amount_hard_limit
+```
+
+Each `lane …` span carries the lane's whole result, so one Logs row tells its story:
+
+| Attribute | Meaning |
+|---|---|
+| `demo.lane` / `demo.lane.label` | `baseline` (No rules) or `governed` (Governed by policy) |
+| `gen_ai.tool.name` | The tool the model picked |
+| `demo.status`, `demo.reason` | The lane's result and the rule's reason code |
+| `demo.tool_executed` | Whether the tool actually ran in this lane |
+| `demo.policy_checks` | The ACS checks this lane went through, for example `input → pre_tool_call` |
+| `demo.stopped_at` | Where the lane ended: `pre_tool_call`, `post_tool_call`, `input`, or `none` |
+| `demo.authz.outcome` | `not_checked`, `allowed`, `approval_required`, `denied_expected`, or `denied_unexpected` |
+| `demo.approval` | `true` for the separate Approve or Reject trace |
+
+`acs.evaluate` spans and their `acs.decision` events also carry `demo.lane = governed`, and
+`policy_decision` events carry `lane`. Answers recorded before lane spans were added
+(2026-10-04) show their steps by lane, but not the one-row-per-lane view.
+
+Where to see the split:
+
+- **Both lanes in Logs** under each answer: one row per lane.
+- **This answer in Logs**: every step, grouped as Shared, No rules, then Governed.
+- The presenter console, on the trace-it-live slide: **Open every answer, both lanes (Logs)**
+  lists every recent answer with both lanes side by side. No ID needed.
+- **Answer review** workbook: a side-by-side table per answer, and **No rules** and
+  **Governed** columns for recent answers and whole chats.
 
 ## Review one answer or one chat
 
@@ -49,7 +90,7 @@ set up.
 |---|---|---|
 | Browser (React) | W3C `traceparent` on every API call, so each trace **starts in the browser**; opt-in `client_timing` (first-event and total stream latency) | [`frontend/src/lib/api.ts`](../../frontend/src/lib/api.ts) |
 | FastAPI backend | Request spans, Python logs, exceptions, live metrics | `azure-monitor-opentelemetry` distro, managed-identity (Entra) auth |
-| Agent harness | GenAI semantic-convention spans: `invoke_agent bank-manager` → `chat <deployment>` → `acs.evaluate input` / `acs.evaluate pre_tool_call` → `execute_tool <tool>` (per lane) | [`backend/bank_manager/tracing.py`](../../backend/bank_manager/tracing.py) |
+| Agent harness | GenAI semantic-convention spans: `invoke_agent bank-manager` → `chat <deployment>`, then one branch per lane: `lane baseline` → `execute_tool <tool>`, and `lane governed` → `acs.evaluate input` / `acs.evaluate pre_tool_call` → `execute_tool <tool>` (only if allowed). Each lane span records its result (see [Split by lane](#split-by-lane)) | [`backend/bank_manager/tracing.py`](../../backend/bank_manager/tracing.py) |
 | Model calls | `gen_ai.request.model`, `gen_ai.response.model`, `gen_ai.usage.*` tokens, finish reason, errors; metrics `gen_ai.client.token.usage`, `gen_ai.client.operation.duration`, `demo.ai.estimated_cost` | `tracing.chat_span` in the router |
 | HTTP to Foundry | Dependency spans for every Azure OpenAI call over the private endpoint | httpx instrumentation (the OpenAI SDK uses httpx) |
 | ACS policy engine | `acs_intervention_{allow,deny,transform}_total`, `acs_intervention_duration_ms` metrics; `acs.decision` span events with decision, reason code, policy ID, duration | ACS `OtelMetricsTelemetrySink` + `SpanEventTelemetrySink` |

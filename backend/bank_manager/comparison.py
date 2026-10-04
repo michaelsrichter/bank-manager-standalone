@@ -184,23 +184,29 @@ async def resolve_approval(
     approve: bool,
 ) -> dict[str, Any]:
     if not approve:
-        return project_result(
+        with tracing.lane_span("governed", str(action["tool_name"]), approval=True) as lane:
+            result = project_result(
+                "governed",
+                outcome("deny", "operator_rejected", "The operator rejected the approval request."),
+                action=action,
+                tool_executed=False,
+                intervention_point="pre_tool_call",
+            )
+            tracing.record_lane_result(lane, result, ("pre_tool_call",))
+        return result
+    with tracing.lane_span("governed", str(action["tool_name"]), approval=True) as lane:
+        with tracing.tool_span(str(action["tool_name"]), "governed", approved=True) as span:
+            result = await run_action(control, action, snapshot, approved=True)
+            tracing.record_outcome(span, result)
+        projected = project_result(
             "governed",
-            outcome("deny", "operator_rejected", "The operator rejected the approval request."),
+            result,
             action=action,
-            tool_executed=False,
-            intervention_point="pre_tool_call",
+            tool_executed=result["status"] != "deny",
+            intervention_point="post_tool_call",
         )
-    with tracing.tool_span(str(action["tool_name"]), "governed", approved=True) as span:
-        result = await run_action(control, action, snapshot, approved=True)
-        tracing.record_outcome(span, result)
-    return project_result(
-        "governed",
-        result,
-        action=action,
-        tool_executed=result["status"] != "deny",
-        intervention_point="post_tool_call",
-    )
+        tracing.record_lane_result(lane, projected, ("pre_tool_call", "post_tool_call"))
+    return projected
 
 
 # tour:end comparison-approval
@@ -347,20 +353,53 @@ async def _stream_comparison(
         fakeAi=routing.fake,
     )
     yield event("tool.selected", action=project_action(routing.action))
+    tool_name = str(routing.action["tool_name"]) if routing.action else None
 
     yield event("step", id="baseline", state="started")
-    baseline = run_baseline(routing.action)
-    _emit_decision(sink, baseline)
+    with tracing.lane_span("baseline", tool_name) as lane:
+        baseline = run_baseline(routing.action)
+        tracing.record_lane_result(lane, baseline)
+        _emit_decision(sink, baseline)
     yield event("step", id="baseline", state="completed", status=baseline["status"])
     yield event("lane.result", result=baseline)
 
-    async for kind, payload in run_governed(control, prompt, routing.action, snapshot):
-        if kind == "step":
-            yield event("step", **payload)
-        else:
-            _emit_decision(sink, payload)
-            yield event("lane.result", result=payload)
+    # The governed lane streams, so its span is activated around each step only
+    # (never across a yield), like the invoke_agent span in stream_comparison.
+    lane = tracing.start_lane_span("governed", tool_name)
+    checks: list[str] = []
+    governed = run_governed(control, prompt, routing.action, snapshot)
+    try:
+        while True:
+            with trace.use_span(lane, end_on_exit=False):
+                try:
+                    kind, payload = await governed.__anext__()
+                except StopAsyncIteration:
+                    break
+                if kind == "result":
+                    tracing.record_lane_result(lane, payload, checks)
+                    _emit_decision(sink, payload)
+            if kind == "step":
+                if payload["state"] == "started":
+                    checks.extend(p for p in POLICY_CHECKS[payload["id"]] if p not in checks)
+                yield event("step", **payload)
+            else:
+                yield event("lane.result", result=payload)
+    except Exception as error:
+        lane.record_exception(error)
+        lane.set_status(Status(StatusCode.ERROR, type(error).__name__))
+        raise
+    finally:
+        await governed.aclose()
+        lane.end()
     yield event("run.completed", traceId=trace_id)
+
+
+# The ACS checks each governed step reaches. run_tool checks again before and after the tool.
+POLICY_CHECKS = {
+    "governed.input": ("input",),
+    "governed.pre_tool": ("pre_tool_call",),
+    "governed.tool": ("pre_tool_call", "post_tool_call"),
+}
 
 
 def _emit_decision(sink: EventSink, result: Mapping[str, Any]) -> None:

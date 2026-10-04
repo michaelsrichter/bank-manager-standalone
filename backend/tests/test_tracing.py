@@ -26,9 +26,13 @@ def run(prompt: str, tmp_path, **deps):
 def test_agent_harness_emits_genai_spans_with_correct_parents(tmp_path):
     spans = run("Show account A-2001", tmp_path)
     agent = spans["invoke_agent bank-manager"]
-    for name in ("chat gpt-4.1", "acs.evaluate input", "acs.evaluate pre_tool_call"):
+    for name in ("chat gpt-4.1", "lane baseline", "lane governed"):
         assert spans[name].parent.span_id == agent.context.span_id, name
         assert spans[name].context.trace_id == agent.context.trace_id
+    governed = spans["lane governed"]
+    for name in ("acs.evaluate input", "acs.evaluate pre_tool_call"):
+        assert spans[name].parent.span_id == governed.context.span_id, name
+        assert spans[name].attributes["demo.lane"] == "governed"
     assert agent.attributes["gen_ai.operation.name"] == "invoke_agent"
     assert agent.attributes["demo.governed.reason"] == "account_access_denied"
     chat = spans["chat gpt-4.1"]
@@ -38,6 +42,63 @@ def test_agent_harness_emits_genai_spans_with_correct_parents(tmp_path):
     assert chat.attributes["demo.selected_tool"] == "read_account"
     baseline_tool = spans["execute_tool read_account"]
     assert baseline_tool.attributes["demo.lane"] == "baseline"
+    assert baseline_tool.parent.span_id == spans["lane baseline"].context.span_id
+
+
+def test_each_lane_span_records_its_own_result(tmp_path):
+    spans = run("Show account A-2001", tmp_path)
+    baseline = spans["lane baseline"].attributes
+    assert baseline["demo.lane.label"] == "No rules (unsafe on purpose)"
+    assert baseline["gen_ai.tool.name"] == "read_account"
+    assert baseline["demo.tool_executed"] is True
+    assert baseline["demo.authz.outcome"] == "not_checked"
+    assert baseline["demo.policy_checks"] == "none"
+    governed = spans["lane governed"].attributes
+    assert governed["demo.lane.label"] == "Governed by policy"
+    assert governed["demo.status"] == "deny"
+    assert governed["demo.reason"] == "account_access_denied"
+    assert governed["demo.authz.outcome"] == "denied_expected"
+    assert governed["demo.tool_executed"] is False
+    assert governed["demo.stopped_at"] == "pre_tool_call"
+    assert governed["demo.policy_checks"] == "input → pre_tool_call"
+    assert "execute_tool read_account" in spans  # only the baseline ran the tool
+    tool_lanes = [
+        s.attributes["demo.lane"]
+        for s in SPAN_EXPORTER.get_finished_spans()
+        if s.name.startswith("execute_tool")
+    ]
+    assert tool_lanes == ["baseline"]
+
+
+def test_allowed_governed_lane_lists_every_policy_check(tmp_path):
+    spans = run("Show account A-1001", tmp_path)
+    governed = spans["lane governed"].attributes
+    assert governed["demo.status"] == "transform"
+    assert governed["demo.tool_executed"] is True
+    assert governed["demo.policy_checks"] == "input → pre_tool_call → post_tool_call"
+
+
+def test_approval_click_is_its_own_governed_lane_span(tmp_path):
+    SPAN_EXPORTER.clear()
+    client = TestClient(create_app(make_deps(tmp_path)))
+    action = {
+        "tool_name": "prepare_transfer",
+        "args": {"account_id": "A-1001", "destination_account_id": "A-2001", "amount": 12000},
+    }
+    for decision, checks, ran in (
+        ("approve", "pre_tool_call → post_tool_call", True),
+        ("reject", "pre_tool_call", False),
+    ):
+        SPAN_EXPORTER.clear()
+        client.post(
+            "/api/approval",
+            json={"action": action, "personaId": "M-101", "decision": decision},
+            headers={"X-Demo-Session": SESSION},
+        )
+        lane = next(s for s in SPAN_EXPORTER.get_finished_spans() if s.name == "lane governed")
+        assert lane.attributes["demo.approval"] is True
+        assert lane.attributes["demo.policy_checks"] == checks
+        assert lane.attributes["demo.tool_executed"] is ran
 
 
 def test_acs_decisions_are_recorded_on_policy_spans(tmp_path):
@@ -45,6 +106,7 @@ def test_acs_decisions_are_recorded_on_policy_spans(tmp_path):
     pre_tool = spans["acs.evaluate pre_tool_call"]
     events = [event for event in pre_tool.events if event.name == "acs.decision"]
     assert events and events[0].attributes["acs.reason_code"] == "account_access_denied"
+    assert events[0].attributes["demo.lane"] == "governed"
     assert pre_tool.attributes["demo.status"] == "deny"
 
 

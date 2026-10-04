@@ -55,18 +55,57 @@ export function windowAround(
   };
 }
 
-/** Every step of one answer, in order. Paste into Logs on the Application Insights resource. */
+/**
+ * Every step of one answer, grouped by lane: shared steps (request, model call),
+ * then the no-rules lane, then the governed lane. Paste into Logs on Application Insights.
+ */
 export function answerStepsKql(traceId: string): string {
   return [
-    // tour:begin slide-answer-kql
     `let traceId = "${requireTraceId(traceId)}";`,
     "union requests, dependencies, traces, exceptions, customEvents",
     "| where operation_Id == traceId",
+    '| extend lane = coalesce(tostring(customDimensions["demo.lane"]), tostring(customDimensions["lane"]))',
+    '| extend Lane = case(lane == "baseline", "No rules", lane == "governed", "Governed", "Shared")',
+    '| extend Order = case(Lane == "Shared", 0, Lane == "No rules", 1, 2)',
     "| extend Step = coalesce(name, message, type), Seconds = round(duration / 1000, 2)",
-    '| extend Decision = tostring(customDimensions["demo.authz.outcome"])',
-    "| project timestamp, Kind = itemType, Service = cloud_RoleName, Step, Seconds, Succeeded = success, Code = resultCode, Decision, SpanId = id, ParentId = operation_ParentId",
+    '| extend Decision = tostring(customDimensions["demo.authz.outcome"]), Rule = tostring(customDimensions["demo.reason"])',
+    "| order by Order asc, timestamp asc",
+    "| project Lane, timestamp, Kind = itemType, Step, Decision, Rule, Seconds, Succeeded = success, Code = resultCode, SpanId = id, ParentId = operation_ParentId",
+  ].join("\n");
+}
+
+/** One row per lane for one answer: did the tool run, what decided it, and which checks ran. */
+export function bothLanesKql(traceId: string): string {
+  return [
+    // tour:begin slide-lanes-kql
+    `let traceId = "${requireTraceId(traceId)}";`,
+    "dependencies",
+    '| where operation_Id == traceId and name startswith "lane "',
+    "| extend d = customDimensions",
+    '| project Lane = tostring(d["demo.lane.label"]), Tool = tostring(d["gen_ai.tool.name"]),',
+    '    ["Tool ran"] = tostring(d["demo.tool_executed"]), Result = tostring(d["demo.status"]),',
+    '    Rule = tostring(d["demo.reason"]), ["Policy checks"] = tostring(d["demo.policy_checks"]),',
+    '    Decision = tostring(d["demo.authz.outcome"]), Seconds = round(duration / 1000, 3), timestamp',
     "| order by timestamp asc",
-    // tour:end slide-answer-kql
+    // tour:end slide-lanes-kql
+  ].join("\n");
+}
+
+/** Every recent answer as one row, with the two lanes side by side. Needs no ID. */
+export function recentLanesKql(): string {
+  return [
+    "dependencies",
+    '| where name startswith "lane "',
+    "| extend d = customDimensions",
+    '| extend Lane = tostring(d["demo.lane"]), Ran = iff(tostring(d["demo.tool_executed"]) =~ "true", "tool ran", "tool did not run")',
+    '| extend Summary = strcat(tostring(d["demo.status"]), " · ", Ran, " · ", tostring(d["demo.reason"]))',
+    '| summarize Asked = min(timestamp), Kind = iff(countif(tostring(d["demo.approval"]) =~ "true") > 0, "Approve or Reject", "Question"),',
+    '    Tool = take_any(tostring(d["gen_ai.tool.name"])),',
+    '    ["No rules"] = take_anyif(Summary, Lane == "baseline"), Governed = take_anyif(Summary, Lane == "governed"),',
+    '    ["Policy checks"] = take_anyif(tostring(d["demo.policy_checks"]), Lane == "governed")',
+    "    by TraceId = operation_Id",
+    "| order by Asked desc",
+    "| take 25",
   ].join("\n");
 }
 
@@ -87,6 +126,9 @@ export function conversationKql(conversationId: string): string {
     '    InputTokens = sum(tolong(customDimensions["gen_ai.usage.input_tokens"])),',
     '    OutputTokens = sum(tolong(customDimensions["gen_ai.usage.output_tokens"])),',
     '    Decisions = make_set_if(tostring(customDimensions["demo.authz.outcome"]), isnotempty(tostring(customDimensions["demo.authz.outcome"]))),',
+    '    ["No-rules tool runs"] = countif(name == "lane baseline" and tostring(customDimensions["demo.tool_executed"]) =~ "true"),',
+    '    ["Governed tool runs"] = countif(name == "lane governed" and tostring(customDimensions["demo.tool_executed"]) =~ "true"),',
+    '    ["Governed blocks"] = countif(name == "lane governed" and tostring(customDimensions["demo.status"]) == "deny"),',
     "    FailedSteps = countif(success == false), TraceIds = make_set(operation_Id, 100)",
   ].join("\n");
 }

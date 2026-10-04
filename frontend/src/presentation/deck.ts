@@ -99,7 +99,7 @@ export const sessionDeck: Deck = {
     "Keep Azure portal tabs signed in but outside the Demo Window. The portal cannot be framed.",
     "Use Live first. If a live call fails, say so, then switch to **Use Practice** and label it as Practice.",
     "Open the **Governed AI Bank Assistant — telemetry** workbook, the **answer review** workbook, the **Governed AI Bank Assistant** dashboard, and Application Insights **Logs** in one signed-in portal window. You need at least Monitoring Reader.",
-    "About 10 minutes early, ask one question in the Live demo and open **This answer in Logs**. Telemetry takes 2 to 5 minutes to arrive, so this proves the path works and gives you a backup trace.",
+    "About 10 minutes early, run **Transfer $60,000 from A-1001 to A-2001** in the Live demo and open **Both lanes in Logs**. Telemetry takes 2 to 5 minutes to arrive, so this proves the path works and gives you a backup trace with both lanes.",
     "Do not type real personal, bank, customer, partner, or meeting details into the demo.",
   ],
   slides: [
@@ -1001,6 +1001,7 @@ export const sessionDeck: Deck = {
             "API request",
             "invoke_agent",
             "chat: model call",
+            "lane baseline | lane governed",
             "acs.evaluate: each check",
             "execute_tool",
             "Azure Monitor",
@@ -1036,10 +1037,48 @@ export const sessionDeck: Deck = {
         say: [
           "The trace starts in the browser. Every API call carries a W3C trace header, so the browser click and the server work share one Trace ID.",
           "The agent steps use the OpenTelemetry GenAI names: invoke_agent, chat for the model call, and execute_tool. ACS adds a span for each policy check.",
+          "Each answer then splits into two branches, one per lane, so the no-rules work and the governed work never mix in the portal.",
           "Metrics answer how much and how often: tokens, cost, latency, and how many calls each rule allowed or blocked.",
           "Microsoft Foundry, Container Apps, and the registry send their own logs to the same Log Analytics workspace.",
           "Every chat also has a Conversation ID, so you can pull up a whole conversation, not just one answer.",
           "The OpenTelemetry GenAI conventions are still in Development status, so names can change.",
+        ],
+      },
+    },
+    {
+      id: "lanes-trace",
+      chip: "Two lanes",
+      title: "One answer, two lanes, one trace",
+      blocks: [
+        {
+          kind: "code",
+          caption: "The real trace for “Transfer $60,000 from A-1001 to A-2001”",
+          code: `invoke_agent bank-manager
+├─ chat gpt-4.1                       the model picks create_transfer
+├─ lane baseline   No rules           tool ran: yes  · not_checked
+│  └─ execute_tool create_transfer
+└─ lane governed   Governed by policy tool ran: no   · payment_amount_hard_limit
+   ├─ acs.evaluate input              allowed
+   └─ acs.evaluate pre_tool_call      denied_expected`,
+        },
+        {
+          kind: "snippet",
+          items: [
+            {
+              id: "slide-lane-result",
+              caption:
+                "Python: each lane span records its own result, so one Logs row tells the lane's story",
+            },
+          ],
+        },
+      ],
+      notes: {
+        minutes: 1,
+        surface: "slides",
+        say: [
+          "The two lanes are not just side by side on screen. They are two branches of the same trace.",
+          "The no-rules branch ran the transfer. The governed branch passed the input check, then the pre-tool check denied it, so the tool never ran.",
+          "Each lane span stores its own result: did the tool run, which rule decided, and which checks ran. That is what makes the next screens easy to read.",
         ],
       },
     },
@@ -1062,19 +1101,19 @@ export const sessionDeck: Deck = {
           kind: "snippet",
           items: [
             {
-              id: "slide-answer-kql",
-              caption: "TypeScript: the Logs query behind “This answer in Logs”",
+              id: "slide-lanes-kql",
+              caption: "TypeScript: the Logs query behind “Both lanes in Logs”",
             },
           ],
         },
       ],
       notes: {
-        minutes: 2,
+        minutes: 1,
         surface: "slides",
         say: [
           "Setup is one call: `configure_azure_monitor`, with the app's managed identity. That sends traces, metrics, and logs.",
           "The first snippet plugs into ACS. Every decision becomes an `acs.decision` event with the check, the decision, the rule's reason code, and how long it took.",
-          "The second snippet is the link you will click next. It builds a Logs query for one Trace ID, and the app opens it in the Azure portal with the time window already set.",
+          "The second snippet is the link you will click next. It asks Logs for the two lane spans of one Trace ID: one row per lane. The app opens it in the Azure portal with the time window already set.",
           "So the path from a confusing answer to its root cause is one click.",
         ],
       },
@@ -1082,32 +1121,32 @@ export const sessionDeck: Deck = {
     {
       id: "observability",
       chip: "Trace it live",
-      title: "Trace an answer in Azure Monitor",
+      title: "Trace an answer in Azure Monitor, lane by lane",
       blocks: [
         {
           kind: "table",
           caption: "What the demo gives you today",
-          headers: ["Where", "Use it to"],
+          headers: ["Where", "What you see"],
           rows: [
             [
-              "**IDs and observability links** under every answer",
-              "Copy the Trace ID and Conversation ID, and open the answer in the portal",
+              "**Both lanes in Logs** (under each answer)",
+              "One row per lane: did the tool run, which rule decided, which policy checks ran",
             ],
             [
               "**This answer in Logs**",
-              "See every step in order, with timing, the model, and the policy decision",
+              "Every step, grouped: shared steps, then the no-rules lane, then the governed lane",
+            ],
+            [
+              "Console: **every answer, both lanes**",
+              "Every question in this talk, newest first, with the two lanes side by side. No ID needed",
             ],
             [
               "**Answer review** workbook",
-              "Review one answer or a whole chat: where the time went, problems, decisions",
+              "The same split for one answer or a whole chat, plus where the time went",
             ],
             [
               "**Telemetry** workbook and dashboard",
-              "Watch the whole demo: requests, errors, tokens, cost, denials, slow tools",
-            ],
-            [
-              "Microsoft Foundry **Tracing**",
-              "See the same agent steps from the model platform's side",
+              "Totals for the whole demo: tool runs per lane, governed blocks, errors, cost",
             ],
           ],
         },
@@ -1125,26 +1164,25 @@ export const sessionDeck: Deck = {
         surface: "observability",
         say: [
           "Let us trace a real answer. I will use the $60,000 transfer from a few minutes ago, because new telemetry takes 2 to 5 minutes to arrive.",
-          "The question is simple: what happened, and why did policy decide that?",
+          "The question is simple: what did each lane do, and why did policy decide that?",
           "The Azure portal cannot be framed, so it opens in its own window.",
         ],
         do: [
-          "Press **D** to show the **Live demo**. Scroll to the **$60,000** answer from Live 3.",
-          "Open **IDs and observability links**. Point to **Trace ID** and **Conversation ID**.",
-          "Click **This answer in Logs**. If the portal does not open the query, use the console's **Open Application Insights Logs** button and paste the copied query.",
-          "In the results, read the steps top to bottom: the request, `invoke_agent`, `chat`, then `acs.evaluate pre_tool_call` with Decision **denied_expected**.",
-          "Point out the no-rules lane's `execute_tool` step, with Decision `not_checked`. The governed lane has no `execute_tool` step, because the tool never ran.",
-          "Open the **Answer review** workbook and paste the **Conversation ID** to show the whole chat in one row.",
-          "Open the **Governed AI Bank Assistant — telemetry** workbook. Show section **4 Security boundaries** and section **7 Recent failures**.",
+          "In the console, click **Open every answer, both lanes (Logs)**. Point to the $60,000 row: **No rules** says `allow · tool ran`; **Governed** says `deny · tool did not run · payment_amount_hard_limit`.",
+          "Press **D** to show the **Live demo**. Scroll to the **$60,000** answer and open **IDs and observability links**.",
+          "Click **Both lanes in Logs**. Read the two rows: the no-rules lane ran `create_transfer`; the governed lane stopped at `input → pre_tool_call`.",
+          "Click **This answer in Logs**. Read it by the **Lane** column: shared steps first, then **No rules** (`execute_tool`), then **Governed** (`acs.evaluate` checks, no `execute_tool`).",
+          "Optional: open the **Answer review** workbook and paste the **Conversation ID**. Each answer shows **No rules** and **Governed** columns.",
+          "Optional: open the **telemetry** workbook, section **4 Security boundaries**.",
         ],
         watch: [
-          "One Trace ID links the browser, API, model call, policy checks, and tools.",
+          "The split comes from the trace itself: `lane baseline` and `lane governed` are two branches under `invoke_agent`.",
           "`denied_expected` means a written rule said no: the policy working. `denied_unexpected` means the policy engine itself failed and closed safely. That is the one to investigate.",
-          "The rule's reason code, such as `payment_amount_hard_limit`, is in the step's details as `demo.reason`.",
           "No prompt text or account data appears anywhere in Logs.",
         ],
         fallback: [
           "If the new trace has not arrived, use the backup trace from your warm-up question.",
+          "Answers recorded before lane tracing was added show blank lane columns. Use an answer from today.",
           "If portal access is not ready, stay in the app, show **IDs and observability links**, and describe the path. Say the portal needs Monitoring Reader.",
           "If the live site is down, switch to **Practice**. Say Practice answers have no trace links, because nothing real ran.",
         ],

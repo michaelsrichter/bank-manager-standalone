@@ -585,7 +585,7 @@ healthy **only if** the exact expected denial comes back.
 
 <!-- tour:snippet id="tracing-acs-sink" file="backend/bank_manager/tracing.py" lang="python" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/tracing.py#L243-L268"><code>backend/bank_manager/tracing.py</code></a> · lines 243–268</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/backend/bank_manager/tracing.py#L299-L325"><code>backend/bank_manager/tracing.py</code></a> · lines 299–325</summary>
 
 ```python
 class SpanEventTelemetrySink:
@@ -602,6 +602,7 @@ class SpanEventTelemetrySink:
             "acs.intervention_point": str(point),
             "acs.decision": str(decision or "none"),
             "acs.reason_code": event.reason_code or "none",
+            "demo.lane": "governed",  # ACS runs only in the governed lane
         }
         if event.policy_id:
             attributes["acs.policy_id"] = event.policy_id

@@ -3,7 +3,9 @@ import { getConfig } from "../lib/api";
 import {
   answerReviewWorkbookUrl,
   appInsightsLogsUrl,
+  logsQueryUrl,
   overviewWorkbookUrl,
+  recentLanesKql,
 } from "../lib/observability-links";
 import type { ObservabilityConfig } from "../lib/types";
 import {
@@ -172,6 +174,29 @@ export default function PresenterConsole({
   const next = deck.slides[slide + 1];
   const suggestedApp = appScreenForSlide(current);
   const outsideLinks = outsideLinksForSlide(current, portalConfig);
+  const showLanes = current.notes.surface === "observability" && Boolean(portalConfig);
+  const [lanesLink, setLanesLink] = useState<string | null>(null);
+  useEffect(() => {
+    if (!showLanes || !portalConfig || typeof CompressionStream === "undefined") return;
+    let active = true;
+    // The last 4 hours: covers the whole talk plus rehearsal, newest answer first.
+    const to = new Date(Date.now() + 10 * 60_000).toISOString();
+    const from = new Date(Date.now() - 4 * 60 * 60_000).toISOString();
+    logsQueryUrl(portalConfig, recentLanesKql(), { from, to })
+      .then((url) => {
+        if (active) setLanesLink(url);
+      })
+      .catch(() => {
+        if (active) setLanesLink(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [showLanes, portalConfig]);
+  const portalLinks: OutsideLink[] =
+    showLanes && lanesLink
+      ? [{ href: lanesLink, label: "every answer, both lanes (Logs)" }, ...outsideLinks]
+      : outsideLinks;
   const connected = screenInfo !== null && now - screenInfo.at < staleAfterMs;
   const canPlaceOnScreen = "getScreenDetails" in window;
   const stateRef = useRef<ShowState>({ slide, mode, presenter, theme });
@@ -547,14 +572,14 @@ export default function PresenterConsole({
           )}
         </div>
 
-        {outsideLinks.length > 0 && (
+        {portalLinks.length > 0 && (
           <div className="console-outside">
             <p>
               Portals cannot appear inside the Demo Window. Open them in their own clean window,
               then share that window or your screen. You need Azure access to open them.
             </p>
             <div className="button-row">
-              {outsideLinks.map((link) => (
+              {portalLinks.map((link) => (
                 <button key={link.href} type="button" onClick={() => openOutside(link.href)}>
                   Open {link.label}
                 </button>

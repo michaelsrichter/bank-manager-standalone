@@ -224,7 +224,7 @@ describe("slides and script pages", () => {
     window.history.pushState(null, "", "/presentation/session#ms-stack");
     const user = userEvent.setup();
     render(<SlidesPage deck={sessionDeck} presenter={emptyPresenter} onSavePresenter={vi.fn()} />);
-    expect(screen.getByText(/3 \/ 27: Microsoft stack/)).toBeInTheDocument();
+    expect(screen.getByText(/3 \/ 28: Microsoft stack/)).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
     expect(window.location.hash).toBe("#stack");
     await user.keyboard("n");
@@ -336,6 +336,33 @@ describe("two-screen mode", () => {
     expect(outsideLinksForSlide(evidence, null)).toEqual([]);
     expect(outsideLinksForSlide(sessionDeck.slides[0], config)).toEqual([]);
     expect(surfaceLabels.observability).toBe("Azure Monitor");
+  });
+
+  it("adds an every-answer, both-lanes Logs button on the trace-it-live slide", async () => {
+    vi.stubGlobal("BroadcastChannel", FakeBroadcastChannel);
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    window.history.pushState(null, "", "/presentation/session/console#observability");
+    render(
+      <PresenterConsole
+        deck={sessionDeck}
+        presenter={emptyPresenter}
+        theme="dark"
+        renderSlide={renderSlide}
+        renderQr={renderQr}
+        observability={{
+          portalOrigin: "https://portal.azure.com",
+          tenantId: "00000000-0000-0000-0000-000000000001",
+          appInsightsResourceId:
+            "/subscriptions/00000000-0000-0000-0000-000000000002/resourceGroups/rg/providers/microsoft.insights/components/appi",
+        }}
+      />,
+    );
+    const button = await screen.findByRole("button", {
+      name: "Open every answer, both lanes (Logs)",
+    });
+    await userEvent.click(button);
+    expect(open.mock.calls.at(-1)?.[0]).toContain("Logs.ReactView");
+    expect(open.mock.calls.at(-1)?.[1]).toBe("bank-portal-window");
   });
 
   it("reports blocked pop-ups", async () => {

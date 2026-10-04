@@ -7,11 +7,13 @@ import {
   answerReviewWorkbookUrl,
   answerStepsKql,
   appInsightsLogsUrl,
+  bothLanesKql,
   conversationKql,
   isConversationId,
   isTraceId,
   logsQueryUrl,
   overviewWorkbookUrl,
+  recentLanesKql,
   windowAround,
 } from "./observability-links";
 import type { ObservabilityConfig } from "./types";
@@ -48,6 +50,23 @@ describe("review IDs", () => {
     expect(answerStepsKql(traceId)).toContain(`let traceId = "${traceId}";`);
     expect(conversationKql("conv_12345678")).toContain('let conversationId = "conv_12345678";');
     expect(conversationKql("conv_12345678")).toContain("gen_ai.conversation.id");
+  });
+
+  it("splits telemetry by lane: grouped steps, one row per lane, and every recent answer", () => {
+    const steps = answerStepsKql(traceId);
+    expect(steps).toContain('customDimensions["demo.lane"]');
+    expect(steps).toContain('"No rules"');
+    expect(steps).toContain("order by Order asc, timestamp asc");
+    expect(steps.split("\n").at(-1)).toMatch(/^\| project Lane, /);
+    const lanes = bothLanesKql(traceId);
+    expect(lanes).toContain(`let traceId = "${traceId}";`);
+    expect(lanes).toContain('name startswith "lane "');
+    expect(lanes).toContain('["Tool ran"]');
+    expect(() => bothLanesKql(`${traceId}" or true`)).toThrow();
+    const recent = recentLanesKql();
+    expect(recent).toContain('["No rules"] = take_anyif(Summary, Lane == "baseline")');
+    expect(recent).toContain('Governed = take_anyif(Summary, Lane == "governed")');
+    expect(conversationKql(conversationId)).toContain('["Governed blocks"]');
   });
 
   it("builds portal links only for the configured resources", async () => {
@@ -125,6 +144,8 @@ describe("ReviewIds panel", () => {
     expect(screen.getByRole("link", { name: "Demo overview workbook" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Application Insights Logs" })).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "This answer in Logs" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Both lanes in Logs" })).toBeInTheDocument();
+    expect(screen.getByText("Query: the two lanes side by side")).toBeInTheDocument();
     expect(screen.getByText("Query: the whole chat as one row")).toBeInTheDocument();
 
     const writeText = vi.fn().mockResolvedValue(undefined);

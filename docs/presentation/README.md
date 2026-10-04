@@ -28,12 +28,13 @@ Use `//` instead of `#` in TypeScript. Then run `npm run tour:sync` in `frontend
 
 ## Observability in the talk
 
-Four slides cover observability. The speaker notes are the script:
+Five slides cover observability. The speaker notes are the script:
 
-1. **Why observability matters for agents:** find problems fast, prove every decision, catch trouble early, all without logging private data.
-2. **How it works:** one Trace ID from the browser through `invoke_agent`, the model call, each ACS check, and each tool, sent with OpenTelemetry and managed identity to Application Insights, Azure Monitor metrics, and Log Analytics.
-3. **Tracing in code:** the ACS telemetry sink and the Logs query behind **This answer in Logs**, with GitHub links.
-4. **Trace an answer in Azure Monitor (live):** open the $60,000 answer from Live 3, then **IDs and observability links** → **This answer in Logs**. Read the steps and the Decision column: `denied_expected` is the policy working; `denied_unexpected` is the engine failing closed and is the one to investigate. The governed lane has no `execute_tool` step. Then show the **Answer review** workbook (paste the Conversation ID) and the **telemetry** workbook sections 4 and 7.
+1. **Observability: what Microsoft gives you:** Application Insights with OpenTelemetry, Microsoft Foundry tracing, workbooks and alerts, and Foundry Control Plane.
+2. **How it works:** one Trace ID from the browser through `invoke_agent`, the model call, then one branch per lane (`lane baseline` and `lane governed`), each ACS check, and each tool, sent with OpenTelemetry and managed identity to Application Insights, Azure Monitor metrics, and Log Analytics.
+3. **One answer, two lanes, one trace:** the real span tree for the $60,000 transfer: `lane baseline` ran the tool; `lane governed` stopped at `pre_tool_call`. The code shows how each lane span records its own result.
+4. **Tracing in code:** the ACS telemetry sink and the Logs query behind **Both lanes in Logs**, with GitHub links.
+5. **Trace an answer in Azure Monitor, lane by lane (live):** in the console, click **Open every answer, both lanes (Logs)** to show every question asked so far with the two lanes side by side. Then open the $60,000 answer's **IDs and observability links** → **Both lanes in Logs** (one row per lane) and **This answer in Logs** (steps grouped Shared → No rules → Governed). `denied_expected` is the policy working; `denied_unexpected` is the engine failing closed and is the one to investigate. Optional: the **Answer review** workbook (paste the Conversation ID) has **No rules** and **Governed** columns.
 
 Telemetry takes 2 to 5 minutes to arrive, so the live step traces an answer from earlier in the talk. Ask one question about 10 minutes before the talk as a backup trace. Details: [observability](../telemetry/observability.md).
 
@@ -73,7 +74,7 @@ Demo Window (so the live chat is kept).
 in the console header, and the slides and the live pages inside the Demo Window change too.
 Every open page of this site follows the same choice.
 
-The Demo Window can frame only same-site routes from a fixed allow-list: the live demo, Practice backup, Evaluations, health page, governance tour, architecture diagrams, and products and links page. Azure portal pages cannot be framed. On the evidence slide, the console shows **Open Answer review workbook**, **Open Demo overview workbook**, and **Open Application Insights Logs** buttons. They open the portal in its own clean window, which you can then share.
+The Demo Window can frame only same-site routes from a fixed allow-list: the live demo, Practice backup, Evaluations, health page, governance tour, architecture diagrams, and products and links page. Azure portal pages cannot be framed. On the trace-it-live slide, the console shows **Open every answer, both lanes (Logs)**, **Open Answer review workbook**, **Open Demo overview workbook**, and **Open Application Insights Logs** buttons. They open the portal in its own clean window, which you can then share.
 
 ## Presenter details and privacy
 

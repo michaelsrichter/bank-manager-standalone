@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Answer review\nUse this page to review **one answer** or **one whole chat** in the Bank Manager governance demo.\n\n1. In the demo, open **IDs and observability links** under an answer.\n2. Copy the **Trace ID** (one answer) or the **Conversation ID** (the whole chat), and paste it below. Or select a row in **Recent answers**.\n\nA trace ID is the W3C trace ID. Application Insights stores it as the operation ID (`operation_Id`). Telemetry never holds the question, the answer, or account data. **Decision** shows what the policy did: `allowed`, `approval_required`, `denied_expected` (the rules blocked something they should block) or `denied_unexpected` (something broke, so look into it). `not_checked` is the no-rules lane, shown for comparison.\n\nThis page is defined in `infra/dashboards/answer-review.workbook.json`. Change that file, not only the portal. See the `eps-demo-telemetry-links` skill."
+        "json": "# Answer review\nUse this page to review **one answer** or **one whole chat** in the Bank Manager governance demo.\n\n1. In the demo, open **IDs and observability links** under an answer.\n2. Copy the **Trace ID** (one answer) or the **Conversation ID** (the whole chat), and paste it below. Or select a row in **Recent answers**.\n\nA trace ID is the W3C trace ID. Application Insights stores it as the operation ID (`operation_Id`). Telemetry never holds the question, the answer, or account data. **Decision** shows what the policy did: `allowed`, `approval_required`, `denied_expected` (the rules blocked something they should block) or `denied_unexpected` (something broke, so look into it). `not_checked` is the no-rules lane, shown for comparison.\n\nThis page is defined in `infra/dashboards/answer-review.workbook.json`. Change that file, not only the portal. See the `eps-demo-telemetry-links` skill.\n\n**Two lanes.** Every answer runs twice: once with **no rules** (unsafe on purpose) and once **governed by policy**. Each lane is its own branch of the trace (`lane baseline` and `lane governed`), so the tables below split the work by lane."
       },
       "name": "intro"
     },
@@ -84,9 +84,9 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "requests\n| where isnotempty(tostring(customDimensions[\"gen_ai.conversation.id\"]))\n| where name has \"compare\"\n| summarize Started = min(timestamp), [\"Seconds\"] = round(max(duration) / 1000, 1), [\"Failed steps\"] = countif(success == false), Conversation = take_any(tostring(customDimensions[\"gen_ai.conversation.id\"])), Mode = take_any(tostring(customDimensions[\"demo.mode\"])), Version = take_any(application_Version) by TraceId = operation_Id\n| top 50 by Started desc",
+        "query": "let lanes = dependencies\n    | where name startswith \"lane \"\n    | extend d = customDimensions, Lane = tostring(customDimensions[\"demo.lane\"])\n    | extend Summary = strcat(tostring(d[\"demo.status\"]), iff(tostring(d[\"demo.tool_executed\"]) =~ \"true\", \" · tool ran\", \" · tool did not run\"), \" · \", tostring(d[\"demo.reason\"]))\n    | summarize [\"No rules\"] = take_anyif(Summary, Lane == \"baseline\"), Governed = take_anyif(Summary, Lane == \"governed\") by operation_Id;\nrequests\n| where isnotempty(tostring(customDimensions[\"gen_ai.conversation.id\"]))\n| where name has \"compare\"\n| summarize Started = min(timestamp), [\"Seconds\"] = round(max(duration) / 1000, 1), [\"Failed steps\"] = countif(success == false), Conversation = take_any(tostring(customDimensions[\"gen_ai.conversation.id\"])), Mode = take_any(tostring(customDimensions[\"demo.mode\"])), Version = take_any(application_Version) by TraceId = operation_Id\n| top 50 by Started desc\n| join kind=leftouter lanes on $left.TraceId == $right.operation_Id\n| project-away operation_Id\n| project Started, TraceId, [\"No rules\"], Governed, Seconds, [\"Failed steps\"], Conversation, Mode, Version",
         "size": 0,
-        "title": "Recent answers (select a row)",
+        "title": "Recent answers, with both lanes (select a row)",
         "noDataMessage": "No answers yet. Ask a question in the demo, then refresh.",
         "timeContextFromParameter": "TimeRange",
         "timeContext": {
@@ -106,7 +106,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## One answer\nWhere the time went, every step in order, and anything that failed."
+        "json": "## One answer\nThe two lanes side by side, where the time went, every step grouped by lane, and anything that failed."
       },
       "conditionalVisibility": {
         "parameterName": "TraceId",
@@ -114,6 +114,33 @@
         "value": ""
       },
       "name": "h-answer"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let traceId = trim(\" \", \"{TraceId}\");\ndependencies\n| where operation_Id == traceId and name startswith \"lane \"\n| extend d = customDimensions\n| project Lane = tostring(d[\"demo.lane.label\"]), Tool = tostring(d[\"gen_ai.tool.name\"]), [\"Tool ran\"] = tostring(d[\"demo.tool_executed\"]), Result = tostring(d[\"demo.status\"]), Rule = tostring(d[\"demo.reason\"]), [\"Policy checks\"] = tostring(d[\"demo.policy_checks\"]), Decision = tostring(d[\"demo.authz.outcome\"]), Seconds = round(duration / 1000, 3), timestamp\n| order by timestamp asc",
+        "size": 0,
+        "title": "The two lanes, side by side",
+        "noDataMessage": "No lane spans for this answer. Answers recorded before lane tracing show their steps below instead.",
+        "timeContextFromParameter": "TimeRange",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "crossComponentResources": [
+          "__APP_INSIGHTS_ID__"
+        ],
+        "visualization": "table"
+      },
+      "conditionalVisibility": {
+        "parameterName": "TraceId",
+        "comparison": "isNotEqualTo",
+        "value": ""
+      },
+      "customWidth": "50",
+      "name": "answer-lanes"
     },
     {
       "type": 3,
@@ -173,9 +200,9 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let traceId = trim(\" \", \"{TraceId}\");\nunion requests, dependencies, traces, exceptions\n| where operation_Id == traceId\n| extend Step = coalesce(name, message, type), Seconds = round(duration / 1000, 2), Decision = tostring(customDimensions[\"demo.authz.outcome\"]), Lane = tostring(customDimensions[\"demo.lane\"])\n| project timestamp, Kind = itemType, Service = cloud_RoleName, Step, Lane, Decision, Seconds, Succeeded = success, Code = resultCode, SpanId = id, ParentId = operation_ParentId\n| order by timestamp asc",
+        "query": "let traceId = trim(\" \", \"{TraceId}\");\nunion requests, dependencies, traces, exceptions, customEvents\n| where operation_Id == traceId\n| extend lane = coalesce(tostring(customDimensions[\"demo.lane\"]), tostring(customDimensions[\"lane\"]))\n| extend Lane = case(lane == \"baseline\", \"No rules\", lane == \"governed\", \"Governed\", \"Shared\")\n| extend Order = case(Lane == \"Shared\", 0, Lane == \"No rules\", 1, 2)\n| extend Step = coalesce(name, message, type), Seconds = round(duration / 1000, 2), Decision = tostring(customDimensions[\"demo.authz.outcome\"]), Rule = tostring(customDimensions[\"demo.reason\"])\n| order by Order asc, timestamp asc\n| project Lane, timestamp, Kind = itemType, Step, Decision, Rule, Seconds, Succeeded = success, Code = resultCode, SpanId = id, ParentId = operation_ParentId",
         "size": 0,
-        "title": "Every step in this answer, in order",
+        "title": "Every step in this answer, grouped by lane",
         "noDataMessage": "No steps found for this trace ID in the selected time range.",
         "timeContextFromParameter": "TimeRange",
         "timeContext": {
@@ -211,7 +238,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let conversationId = trim(\" \", \"{ConversationId}\");\nlet traces = requests\n    | where tostring(customDimensions[\"gen_ai.conversation.id\"]) == conversationId\n    | distinct operation_Id;\nunion requests, dependencies\n| where operation_Id in (traces)\n| summarize Questions = dcountif(operation_Id, itemType == 'request' and name has 'compare'), Approvals = dcountif(operation_Id, itemType == 'request' and name has 'approval'), Started = min(timestamp), Ended = max(timestamp), Models = make_set_if(tostring(customDimensions[\"gen_ai.response.model\"]), isnotempty(tostring(customDimensions[\"gen_ai.response.model\"]))), [\"Input tokens\"] = sum(tolong(customDimensions[\"gen_ai.usage.input_tokens\"])), [\"Output tokens\"] = sum(tolong(customDimensions[\"gen_ai.usage.output_tokens\"])), Decisions = make_set_if(tostring(customDimensions[\"demo.authz.outcome\"]), isnotempty(tostring(customDimensions[\"demo.authz.outcome\"]))), [\"Failed steps\"] = countif(success == false), TraceIds = make_set(operation_Id, 100)",
+        "query": "let conversationId = trim(\" \", \"{ConversationId}\");\nlet traces = requests\n    | where tostring(customDimensions[\"gen_ai.conversation.id\"]) == conversationId\n    | distinct operation_Id;\nunion requests, dependencies\n| where operation_Id in (traces)\n| summarize Questions = dcountif(operation_Id, itemType == 'request' and name has 'compare'), Approvals = dcountif(operation_Id, itemType == 'request' and name has 'approval'), Started = min(timestamp), Ended = max(timestamp), Models = make_set_if(tostring(customDimensions[\"gen_ai.response.model\"]), isnotempty(tostring(customDimensions[\"gen_ai.response.model\"]))), [\"Input tokens\"] = sum(tolong(customDimensions[\"gen_ai.usage.input_tokens\"])), [\"Output tokens\"] = sum(tolong(customDimensions[\"gen_ai.usage.output_tokens\"])), Decisions = make_set_if(tostring(customDimensions[\"demo.authz.outcome\"]), isnotempty(tostring(customDimensions[\"demo.authz.outcome\"]))), [\"No-rules tool runs\"] = countif(name == \"lane baseline\" and tostring(customDimensions[\"demo.tool_executed\"]) =~ \"true\"), [\"Governed tool runs\"] = countif(name == \"lane governed\" and tostring(customDimensions[\"demo.tool_executed\"]) =~ \"true\"), [\"Governed blocks\"] = countif(name == \"lane governed\" and tostring(customDimensions[\"demo.status\"]) == \"deny\"), [\"Failed steps\"] = countif(success == false), TraceIds = make_set(operation_Id, 100)",
         "size": 4,
         "title": "Whole chat, one row",
         "noDataMessage": "No answers found for this conversation ID in the selected time range.",
@@ -237,7 +264,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let conversationId = trim(\" \", \"{ConversationId}\");\nrequests\n| where tostring(customDimensions[\"gen_ai.conversation.id\"]) == conversationId\n| summarize Started = min(timestamp), Seconds = round(max(duration) / 1000, 1), [\"Failed steps\"] = countif(success == false), Kind = take_any(iff(name has \"approval\", \"Approve or Reject\", \"Question\")) by TraceId = operation_Id\n| order by Started asc",
+        "query": "let lanes = dependencies\n    | where name startswith \"lane \"\n    | extend d = customDimensions, Lane = tostring(customDimensions[\"demo.lane\"])\n    | extend Summary = strcat(tostring(d[\"demo.status\"]), iff(tostring(d[\"demo.tool_executed\"]) =~ \"true\", \" · tool ran\", \" · tool did not run\"), \" · \", tostring(d[\"demo.reason\"]))\n    | summarize [\"No rules\"] = take_anyif(Summary, Lane == \"baseline\"), Governed = take_anyif(Summary, Lane == \"governed\") by operation_Id;\nlet conversationId = trim(\" \", \"{ConversationId}\");\nrequests\n| where tostring(customDimensions[\"gen_ai.conversation.id\"]) == conversationId\n| summarize Started = min(timestamp), Seconds = round(max(duration) / 1000, 1), [\"Failed steps\"] = countif(success == false), Kind = take_any(iff(name has \"approval\", \"Approve or Reject\", \"Question\")) by TraceId = operation_Id\n| order by Started asc\n| join kind=leftouter lanes on $left.TraceId == $right.operation_Id\n| project-away operation_Id\n| project Started, Kind, TraceId, [\"No rules\"], Governed, Seconds, [\"Failed steps\"]\n| order by Started asc",
         "size": 0,
         "title": "Answers in this chat (select a row to review it above)",
         "noDataMessage": "No answers found for this conversation ID in the selected time range.",

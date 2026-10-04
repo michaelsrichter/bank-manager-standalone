@@ -5,7 +5,9 @@ the Microsoft Foundry tracing view can render them:
 
 - ``invoke_agent bank-manager``: one comparison run (root of the agent work)
 - ``chat <deployment>``: the model call that picks a tool (``gen_ai.*`` usage)
-- ``acs.evaluate <intervention point>``: each ACS policy check
+- ``lane baseline`` / ``lane governed``: one branch per demo lane, so a trace splits
+  into the no-rules work and the governed work, each with its own result
+- ``acs.evaluate <intervention point>``: each ACS policy check (governed lane)
 - ``execute_tool <tool>``: every tool execution, per lane
 
 Prompt text, model output, tool arguments/results, and account data are never
@@ -169,9 +171,63 @@ def policy_span(intervention_point: str) -> Iterator[Span]:
         attributes={
             "acs.intervention_point": intervention_point,
             "gen_ai.agent.name": AGENT_NAME,
+            "demo.lane": "governed",
         },
     ) as span:
         yield span
+
+
+LANE_LABELS = {"baseline": "No rules (unsafe on purpose)", "governed": "Governed by policy"}
+
+
+def _lane_attributes(lane: str, tool_name: str | None, approval: bool) -> dict[str, Any]:
+    attributes: dict[str, Any] = {
+        "demo.lane": lane,
+        "demo.lane.label": LANE_LABELS[lane],
+        "gen_ai.agent.name": AGENT_NAME,
+        "demo.approval": approval,
+    }
+    if tool_name:
+        attributes["gen_ai.tool.name"] = tool_name
+    return attributes
+
+
+# tour:begin slide-lane-span
+@contextmanager
+def lane_span(lane: str, tool_name: str | None, *, approval: bool = False) -> Iterator[Span]:
+    """One branch of the trace per demo lane. Every step of that lane is a child."""
+    with tracer.start_as_current_span(
+        f"lane {lane}",
+        kind=SpanKind.INTERNAL,
+        attributes=_lane_attributes(lane, tool_name, approval),
+    ) as span:
+        yield span
+
+
+# tour:end slide-lane-span
+
+
+def record_lane_result(
+    span: Span, result: Mapping[str, Any], policy_checks: list[str] | tuple[str, ...] = ()
+) -> None:
+    """The lane's final answer, so one query row per lane tells the whole story."""
+    # tour:begin slide-lane-result
+    lane, status = str(result["lane"]), str(result["status"])
+    reason = str(result.get("reason") or "default")
+    span.set_attribute("demo.status", status)
+    span.set_attribute("demo.reason", reason)
+    span.set_attribute("demo.authz.outcome", authz_outcome(lane, status, reason))
+    span.set_attribute("demo.tool_executed", bool(result.get("toolExecuted")))
+    span.set_attribute("demo.stopped_at", str(result.get("interventionPoint") or "none"))
+    span.set_attribute("demo.policy_checks", " → ".join(policy_checks) or "none")
+    # tour:end slide-lane-result
+
+
+def start_lane_span(lane: str, tool_name: str | None) -> Span:
+    """Like ``lane_span``, for a lane that streams: activate it around each step only."""
+    return tracer.start_span(
+        f"lane {lane}", kind=SpanKind.INTERNAL, attributes=_lane_attributes(lane, tool_name, False)
+    )
 
 
 @contextmanager
@@ -255,6 +311,7 @@ class SpanEventTelemetrySink:
             "acs.intervention_point": str(point),
             "acs.decision": str(decision or "none"),
             "acs.reason_code": event.reason_code or "none",
+            "demo.lane": "governed",  # ACS runs only in the governed lane
         }
         # tour:end slide-acs-span-event
         if event.policy_id:

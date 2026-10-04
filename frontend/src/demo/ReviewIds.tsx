@@ -8,6 +8,7 @@ import {
   answerReviewWorkbookUrl,
   answerStepsKql,
   appInsightsLogsUrl,
+  bothLanesKql,
   conversationKql,
   isConversationId,
   isTraceId,
@@ -48,16 +49,25 @@ export function ReviewIds({ turn, config }: Props) {
   const from = window?.from;
   const to = window?.to;
   const [answerLink, setAnswerLink] = useState<string | null>(null);
+  const [lanesLink, setLanesLink] = useState<string | null>(null);
 
   useEffect(() => {
     if (!recorded || !config || typeof CompressionStream === "undefined") return;
     let current = true;
-    logsQueryUrl(config, answerStepsKql(traceId), from && to ? { from, to } : null)
-      .then((url) => {
-        if (current) setAnswerLink(url);
+    const range = from && to ? { from, to } : null;
+    Promise.all([
+      logsQueryUrl(config, bothLanesKql(traceId), range),
+      logsQueryUrl(config, answerStepsKql(traceId), range),
+    ])
+      .then(([lanes, steps]) => {
+        if (!current) return;
+        setLanesLink(lanes);
+        setAnswerLink(steps);
       })
       .catch(() => {
-        if (current) setAnswerLink(null);
+        if (!current) return;
+        setLanesLink(null);
+        setAnswerLink(null);
       });
     return () => {
       current = false;
@@ -102,12 +112,22 @@ export function ReviewIds({ turn, config }: Props) {
         <>
           <p className="muted">{r.accessNote}</p>
           <ul className="review-links">
+            {lanesLink && (
+              <li>
+                <a href={lanesLink} target="_blank" rel="noreferrer">
+                  {r.lanesInLogs}
+                </a>{" "}
+                <CopyButton text={lanesLink} label={r.lanesInLogsCopy} />
+                <small>{r.lanesHelp}</small>
+              </li>
+            )}
             {answerLink && (
               <li>
                 <a href={answerLink} target="_blank" rel="noreferrer">
                   {r.answerInLogs}
                 </a>{" "}
                 <CopyButton text={answerLink} label={r.answerInLogsCopy} />
+                <small>{r.answerInLogsHelp}</small>
               </li>
             )}
             {workbook && (
@@ -133,6 +153,11 @@ export function ReviewIds({ turn, config }: Props) {
               <small>{r.logsHelp}</small>
             </li>
           </ul>
+          <h5>{r.lanesQuery}</h5>
+          <CopyButton text={bothLanesKql(traceId)} label={r.lanesQueryCopy} />
+          <pre>
+            <code>{bothLanesKql(traceId)}</code>
+          </pre>
           <h5>{r.answerQuery}</h5>
           <CopyButton text={answerStepsKql(traceId)} label={r.answerQueryCopy} />
           <pre>
