@@ -58,9 +58,9 @@
   "slide-lanes-kql": {
     "file": "frontend/src/lib/observability-links.ts",
     "lang": "typescript",
-    "first": 81,
-    "last": 89,
-    "href": "https://github.com/michaelsrichter/bank-manager-standalone/blob/main/frontend/src/lib/observability-links.ts#L81-L89",
-    "html": "<pre><code class=\"hljs language-typescript\"><span class=\"hljs-string\">`let traceId = &quot;<span class=\"hljs-subst\">${requireTraceId(traceId)}</span>&quot;;`</span>,\n<span class=\"hljs-string\">&quot;dependencies&quot;</span>,\n<span class=\"hljs-string\">&#x27;| where operation_Id == traceId and name startswith &quot;lane &quot;&#x27;</span>,\n<span class=\"hljs-string\">&quot;| extend d = customDimensions&quot;</span>,\n<span class=\"hljs-string\">&#x27;| project Lane = tostring(d[&quot;demo.lane.label&quot;]), Tool = tostring(d[&quot;gen_ai.tool.name&quot;]),&#x27;</span>,\n<span class=\"hljs-string\">&#x27;    [&quot;Tool ran&quot;] = tostring(d[&quot;demo.tool_executed&quot;]), Result = tostring(d[&quot;demo.status&quot;]),&#x27;</span>,\n<span class=\"hljs-string\">&#x27;    Rule = tostring(d[&quot;demo.reason&quot;]), [&quot;Policy checks&quot;] = tostring(d[&quot;demo.policy_checks&quot;]),&#x27;</span>,\n<span class=\"hljs-string\">&#x27;    Decision = tostring(d[&quot;demo.authz.outcome&quot;]), Seconds = round(duration / 1000, 3), timestamp&#x27;</span>,\n<span class=\"hljs-string\">&quot;| order by timestamp asc&quot;</span>,</code></pre>\n"
+    "first": 85,
+    "last": 92,
+    "href": "https://github.com/michaelsrichter/bank-manager-standalone/blob/main/frontend/src/lib/observability-links.ts#L85-L92",
+    "html": "<pre><code class=\"hljs language-typescript\"><span class=\"hljs-string\">`let traceId = &quot;<span class=\"hljs-subst\">${requireTraceId(traceId)}</span>&quot;;`</span>,\n<span class=\"hljs-string\">&quot;let spans = dependencies&quot;</span>,\n<span class=\"hljs-string\">&#x27;    | where operation_Id == traceId and name startswith &quot;lane &quot;&#x27;</span>,\n<span class=\"hljs-string\">&quot;    | extend d = customDimensions&quot;</span>,\n<span class=\"hljs-string\">&#x27;    | project lane = tostring(d[&quot;demo.lane&quot;]), Tool = tostring(d[&quot;gen_ai.tool.name&quot;]),&#x27;</span>,\n<span class=\"hljs-string\">&#x27;        Ran = tostring(d[&quot;demo.tool_executed&quot;]), Result = tostring(d[&quot;demo.status&quot;]),&#x27;</span>,\n<span class=\"hljs-string\">&#x27;        Rule = tostring(d[&quot;demo.reason&quot;]), Checks = tostring(d[&quot;demo.policy_checks&quot;]),&#x27;</span>,\n<span class=\"hljs-string\">&#x27;        Decision = tostring(d[&quot;demo.authz.outcome&quot;]), Source = &quot;1 lane span&quot;;&#x27;</span>,</code></pre>\n"
   }
 }

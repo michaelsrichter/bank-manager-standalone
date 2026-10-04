@@ -1102,7 +1102,8 @@ export const sessionDeck: Deck = {
           items: [
             {
               id: "slide-lanes-kql",
-              caption: "TypeScript: the Logs query behind “Both lanes in Logs”",
+              caption:
+                "TypeScript: the Logs query behind “Both lanes in Logs” reads each lane span (it falls back to never-sampled policy_decision events)",
             },
           ],
         },
@@ -1113,7 +1114,7 @@ export const sessionDeck: Deck = {
         say: [
           "Setup is one call: `configure_azure_monitor`, with the app's managed identity. That sends traces, metrics, and logs.",
           "The first snippet plugs into ACS. Every decision becomes an `acs.decision` event with the check, the decision, the rule's reason code, and how long it took.",
-          "The second snippet is the link you will click next. It asks Logs for the two lane spans of one Trace ID: one row per lane. The app opens it in the Azure portal with the time window already set.",
+          "The second snippet is the link you will click next. It asks Logs for the two lane spans of one Trace ID: one row per lane. If a span is missing, it falls back to the policy_decision event, which is a log and is never sampled. The app opens it in the Azure portal with the time window already set.",
           "So the path from a confusing answer to its root cause is one click.",
         ],
       },

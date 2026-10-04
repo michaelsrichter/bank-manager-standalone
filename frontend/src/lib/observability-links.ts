@@ -74,36 +74,54 @@ export function answerStepsKql(traceId: string): string {
   ].join("\n");
 }
 
-/** One row per lane for one answer: did the tool run, what decided it, and which checks ran. */
+/**
+ * One row per lane for one answer: did the tool run, what decided it, and which checks ran.
+ * Prefers the lane span; falls back to the policy_decision event (logs are never sampled),
+ * so answers recorded before lane spans, or with dropped spans, still show both lanes.
+ */
 export function bothLanesKql(traceId: string): string {
   return [
     // tour:begin slide-lanes-kql
     `let traceId = "${requireTraceId(traceId)}";`,
-    "dependencies",
-    '| where operation_Id == traceId and name startswith "lane "',
-    "| extend d = customDimensions",
-    '| project Lane = tostring(d["demo.lane.label"]), Tool = tostring(d["gen_ai.tool.name"]),',
-    '    ["Tool ran"] = tostring(d["demo.tool_executed"]), Result = tostring(d["demo.status"]),',
-    '    Rule = tostring(d["demo.reason"]), ["Policy checks"] = tostring(d["demo.policy_checks"]),',
-    '    Decision = tostring(d["demo.authz.outcome"]), Seconds = round(duration / 1000, 3), timestamp',
-    "| order by timestamp asc",
+    "let spans = dependencies",
+    '    | where operation_Id == traceId and name startswith "lane "',
+    "    | extend d = customDimensions",
+    '    | project lane = tostring(d["demo.lane"]), Tool = tostring(d["gen_ai.tool.name"]),',
+    '        Ran = tostring(d["demo.tool_executed"]), Result = tostring(d["demo.status"]),',
+    '        Rule = tostring(d["demo.reason"]), Checks = tostring(d["demo.policy_checks"]),',
+    '        Decision = tostring(d["demo.authz.outcome"]), Source = "1 lane span";',
     // tour:end slide-lanes-kql
+    "let events = customEvents",
+    '    | where operation_Id == traceId and name == "policy_decision"',
+    "    | extend d = customDimensions",
+    '    | project lane = tostring(d["lane"]), Tool = tostring(d["tool"]),',
+    '        Ran = tostring(d["tool_executed"]), Result = tostring(d["status"]),',
+    '        Rule = tostring(d["reason"]), Checks = replace_string(strcat("ended at ", tostring(d["intervention_point"])), "ended at none", "none"),',
+    '        Decision = tostring(d["authz_outcome"]), Source = "2 policy_decision event";',
+    "union spans, events",
+    "| summarize arg_min(Source, *) by lane",
+    "| order by lane asc",
+    '| project Lane = iff(lane == "baseline", "No rules (unsafe on purpose)", "Governed by policy"),',
+    '    Tool, ["Tool ran"] = Ran, Result, Rule, ["Policy checks"] = Checks, Decision, Source',
   ].join("\n");
 }
 
 /** Every recent answer as one row, with the two lanes side by side. Needs no ID. */
 export function recentLanesKql(): string {
   return [
-    "dependencies",
-    '| where name startswith "lane "',
+    "let checks = dependencies",
+    '    | where name == "lane governed"',
+    '    | project operation_Id, Checks = tostring(customDimensions["demo.policy_checks"]);',
+    "customEvents",
+    '| where name == "policy_decision"',
     "| extend d = customDimensions",
-    '| extend Lane = tostring(d["demo.lane"]), Ran = iff(tostring(d["demo.tool_executed"]) =~ "true", "tool ran", "tool did not run")',
-    '| extend Summary = strcat(tostring(d["demo.status"]), " · ", Ran, " · ", tostring(d["demo.reason"]))',
-    '| summarize Asked = min(timestamp), Kind = iff(countif(tostring(d["demo.approval"]) =~ "true") > 0, "Approve or Reject", "Question"),',
-    '    Tool = take_any(tostring(d["gen_ai.tool.name"])),',
-    '    ["No rules"] = take_anyif(Summary, Lane == "baseline"), Governed = take_anyif(Summary, Lane == "governed"),',
-    '    ["Policy checks"] = take_anyif(tostring(d["demo.policy_checks"]), Lane == "governed")',
+    '| extend Lane = tostring(d["lane"]), Ran = iff(tostring(d["tool_executed"]) =~ "true", "tool ran", "tool did not run")',
+    '| extend Summary = strcat(tostring(d["status"]), " · ", Ran, " · ", tostring(d["reason"]))',
+    '| summarize Asked = min(timestamp), Tool = take_any(tostring(d["tool"])),',
+    '    ["No rules"] = take_anyif(Summary, Lane == "baseline"), Governed = take_anyif(Summary, Lane == "governed")',
     "    by TraceId = operation_Id",
+    "| join kind=leftouter checks on $left.TraceId == $right.operation_Id",
+    '| project Asked, TraceId, Tool, ["No rules"], Governed, ["Policy checks"] = Checks',
     "| order by Asked desc",
     "| take 25",
   ].join("\n");

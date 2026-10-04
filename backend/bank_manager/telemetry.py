@@ -138,6 +138,11 @@ def configure_telemetry(
         enable_live_metrics=True,
         resource=telemetry_resource(service_version, environment),
         span_processors=[request_context.ConversationSpanProcessor()],
+        # Keep every span. Without this, the distro (1.8+) uses a rate-limited sampler of
+        # 5 spans per second that drops spans one by one: a single answer makes ~12 spans,
+        # so lane, policy-check, and tool spans went missing at random. Traffic is low and
+        # request rate limits plus the workspace daily cap bound the cost.
+        sampling_ratio=1.0,
     )
     instrumentor = HTTPXClientInstrumentor()
     if not instrumentor.is_instrumented_by_opentelemetry:

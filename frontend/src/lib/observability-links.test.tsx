@@ -61,9 +61,12 @@ describe("review IDs", () => {
     const lanes = bothLanesKql(traceId);
     expect(lanes).toContain(`let traceId = "${traceId}";`);
     expect(lanes).toContain('name startswith "lane "');
+    expect(lanes).toContain('name == "policy_decision"');
+    expect(lanes).toContain("summarize arg_min(Source, *) by lane");
     expect(lanes).toContain('["Tool ran"]');
     expect(() => bothLanesKql(`${traceId}" or true`)).toThrow();
     const recent = recentLanesKql();
+    expect(recent).toContain('name == "policy_decision"');
     expect(recent).toContain('["No rules"] = take_anyif(Summary, Lane == "baseline")');
     expect(recent).toContain('Governed = take_anyif(Summary, Lane == "governed")');
     expect(conversationKql(conversationId)).toContain('["Governed blocks"]');

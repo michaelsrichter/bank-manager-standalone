@@ -54,8 +54,15 @@ Each `lane …` span carries the lane's whole result, so one Logs row tells its 
 | `demo.approval` | `true` for the separate Approve or Reject trace |
 
 `acs.evaluate` spans and their `acs.decision` events also carry `demo.lane = governed`, and
-`policy_decision` events carry `lane`. Answers recorded before lane spans were added
-(2026-10-04) show their steps by lane, but not the one-row-per-lane view.
+`policy_decision` events carry `lane`. The one-row-per-lane views read the lane spans and
+fall back to `policy_decision` events, so answers recorded before lane spans (2026-10-04)
+still show both lanes. Events are logs and are never sampled.
+
+**Sampling.** The app passes `sampling_ratio=1.0` to `configure_azure_monitor`, so every span
+is kept. Without it, `azure-monitor-opentelemetry` 1.8+ uses a rate-limited sampler of 5 spans
+per second that decides span by span. One answer makes about 12 spans in under 2 seconds, so
+lane, policy-check, and tool spans went missing at random, which broke the per-lane views. The
+request rate limits and the workspace daily cap keep the cost bounded.
 
 Where to see the split:
 

@@ -215,3 +215,24 @@ def test_workbook_files_are_valid_json_with_items(path):
     workbook = json.loads(path.read_text(encoding="utf-8"))
     assert workbook["version"] == "Notebook/1.0"
     assert workbook["items"]
+
+
+def test_azure_monitor_keeps_every_span(monkeypatch):
+    """The distro's default rate-limited sampler (5 spans/s) dropped lane and policy spans."""
+    import azure.monitor.opentelemetry as distro
+    import opentelemetry.instrumentation.httpx as httpx_instrumentation
+
+    from bank_manager.telemetry import configure_telemetry
+
+    calls: list[dict] = []
+    monkeypatch.setattr(distro, "configure_azure_monitor", lambda **kw: calls.append(kw))
+
+    class FakeInstrumentor:
+        is_instrumented_by_opentelemetry = True
+
+    monkeypatch.setattr(httpx_instrumentation, "HTTPXClientInstrumentor", FakeInstrumentor)
+    configure_telemetry(False, None)
+    assert calls == []
+    configure_telemetry(True, "00000000-0000-0000-0000-000000000000", service_version="abc")
+    assert calls[0]["sampling_ratio"] == 1.0
+    assert calls[0]["resource"].attributes["service.version"] == "abc"
