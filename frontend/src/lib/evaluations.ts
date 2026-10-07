@@ -1,5 +1,6 @@
 // Foundry Evaluations client (eps-demo-evaluations). The browser only calls this
 // app's /api/evaluations routes; it never gets a Foundry token.
+import { resilientFetch } from "./api";
 
 export interface GraderInfo {
   name: string;
@@ -177,7 +178,7 @@ async function failure(response: Response): Promise<EvaluationApiError> {
   );
 }
 
-export async function getEvaluations(fetcher: Fetch = fetch): Promise<EvaluationOverview> {
+export async function getEvaluations(fetcher: Fetch = resilientFetch): Promise<EvaluationOverview> {
   const response = await fetcher("/api/evaluations", { cache: "no-store" });
   if (!response.ok) throw await failure(response);
   return (await response.json()) as EvaluationOverview;
@@ -186,7 +187,7 @@ export async function getEvaluations(fetcher: Fetch = fetch): Promise<Evaluation
 export async function getEvaluationRun(
   evalId: string,
   runId: string,
-  fetcher: Fetch = fetch,
+  fetcher: Fetch = resilientFetch,
 ): Promise<RunDetail> {
   if (!isEvalId(evalId) || !isRunId(runId)) {
     throw new EvaluationApiError(400, "invalid_request", "Not a Foundry evaluation run.");
@@ -200,7 +201,7 @@ export async function getEvaluationRun(
 
 export async function startEvaluationRun(
   presenterKey: string,
-  fetcher: Fetch = fetch,
+  fetcher: Fetch = resilientFetch,
 ): Promise<RunSummary> {
   const response = await fetcher("/api/evaluations/runs", {
     method: "POST",

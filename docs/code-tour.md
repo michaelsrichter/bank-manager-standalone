@@ -17,7 +17,7 @@ silence counts as a stall.
 
 <!-- tour:snippet id="api-deliver" file="frontend/src/lib/api.ts" lang="typescript" -->
 <details open>
-<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/frontend/src/lib/api.ts#L178-L184"><code>frontend/src/lib/api.ts</code></a> · lines 178–184</summary>
+<summary><a href="https://github.com/michaelsrichter/bank-manager-standalone/blob/main/frontend/src/lib/api.ts#L218-L224"><code>frontend/src/lib/api.ts</code></a> · lines 218–224</summary>
 
 ```typescript
 const deliver = (line: string) => {

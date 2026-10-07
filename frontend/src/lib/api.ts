@@ -38,6 +38,46 @@ export interface CompareBody {
 
 type Fetch = typeof fetch;
 
+/** Waits before each retry of a dropped connection. */
+export const NETWORK_RETRY_DELAYS_MS = [250, 750, 1500];
+
+function wait(ms: number, signal?: AbortSignal | null): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      },
+      { once: true },
+    );
+  });
+}
+
+/**
+ * Retries when the connection drops before any response arrives ("Failed to fetch").
+ * Any HTTP response, including an error status, is returned as-is. Aborts are not retried.
+ * Safe for this demo: every tool works on synthetic data, so a repeated request has no side effects.
+ */
+export function withNetworkRetry(fetcher: Fetch, delays = NETWORK_RETRY_DELAYS_MS): Fetch {
+  return async (input, init) => {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await fetcher(input, init);
+      } catch (error) {
+        const aborted = init?.signal?.aborted || (error as Error)?.name === "AbortError";
+        if (aborted || attempt >= delays.length) throw error;
+        await wait(delays[attempt], init?.signal);
+      }
+    }
+  };
+}
+
+/** The browser fetch, with retries for dropped connections. */
+export const resilientFetch: Fetch = (input, init) => withNetworkRetry(fetch)(input, init);
+
 function randomHex(bytes: number): string {
   const values = crypto.getRandomValues(new Uint8Array(bytes));
   return Array.from(values, (value) => value.toString(16).padStart(2, "0")).join("");
@@ -84,13 +124,13 @@ async function failure(response: Response): Promise<Error> {
   return new ApiError(response.status, code, message);
 }
 
-export async function getConfig(fetcher: Fetch = fetch): Promise<AppConfig> {
+export async function getConfig(fetcher: Fetch = resilientFetch): Promise<AppConfig> {
   const response = await fetcher("/api/config");
   if (!response.ok) throw await failure(response);
   return (await response.json()) as AppConfig;
 }
 
-export async function getHealth(fetcher: Fetch = fetch): Promise<HealthSnapshot> {
+export async function getHealth(fetcher: Fetch = resilientFetch): Promise<HealthSnapshot> {
   const response = await fetcher("/api/health");
   if (response.status !== 200 && response.status !== 503) throw await failure(response);
   return (await response.json()) as HealthSnapshot;
@@ -104,7 +144,7 @@ export async function resolveApproval(
     decision: "approve" | "reject";
   },
   sessionId: string,
-  fetcher: Fetch = fetch,
+  fetcher: Fetch = resilientFetch,
   context?: RequestContext,
 ): Promise<{ result: LaneResult; traceId: string; conversationId?: string | null }> {
   const response = await fetcher("/api/approval", {
@@ -120,7 +160,7 @@ export async function resolveApproval(
   };
 }
 
-export function sendPageView(page: string, fetcher: Fetch = fetch): void {
+export function sendPageView(page: string, fetcher: Fetch = resilientFetch): void {
   void fetcher("/api/telemetry/page-view", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -136,7 +176,7 @@ export interface ClientTiming {
   modelKey: string;
 }
 
-export function sendClientTiming(timing: ClientTiming, fetcher: Fetch = fetch): void {
+export function sendClientTiming(timing: ClientTiming, fetcher: Fetch = resilientFetch): void {
   void fetcher("/api/telemetry/client-timing", {
     method: "POST",
     headers: { "Content-Type": "application/json", traceparent: newTraceparent() },
@@ -160,7 +200,7 @@ export async function streamCompare(
     context?: RequestContext;
   } = {},
 ): Promise<void> {
-  const { fetcher = fetch, stallMs = 45_000, signal, context } = options;
+  const { fetcher = resilientFetch, stallMs = 45_000, signal, context } = options;
   const response = await fetcher("/api/compare", {
     method: "POST",
     headers: headers(sessionId, context),
