@@ -86,7 +86,8 @@ export const sessionDeck: Deck = {
   id: "session",
   title: "Can an AI assistant be trusted with a bank account?",
   kicker: "45-minute session",
-  subtitle: "Microsoft's tools for governed, trusted agents, shown working in one app.",
+  subtitle:
+    "Governance and Observability for AI agents: Microsoft's tools, shown working in one app.",
   lengthLabel: "45-minute",
   targetMinutes: 45,
   summary:
@@ -110,7 +111,11 @@ export const sessionDeck: Deck = {
       blocks: [
         {
           kind: "lead",
-          text: "How Microsoft keeps agents governed and trusted, shown working in a live banking assistant.",
+          text: "**Governance and Observability** for AI agents, with Microsoft's tools, shown working in a live banking assistant.",
+        },
+        {
+          kind: "lead",
+          text: "This demo is **free to use**, with all the code open on GitHub. I'll post the link in the chat. Scan below to try it now, or to **connect with me on LinkedIn**.",
         },
         { kind: "qr" },
       ],
@@ -118,9 +123,11 @@ export const sessionDeck: Deck = {
         minutes: 1,
         surface: "slides",
         say: [
-          "Welcome. You already know agents need governance. This talk is about the Microsoft tools that deliver it.",
+          "Welcome. This session is about Governance and Observability for AI agents. You already know agents need governance, so we will focus on the Microsoft tools that deliver it.",
           "Everything you see runs live in one public app: Microsoft Foundry, the Agent Governance Toolkit, ASSERT, and Azure Monitor.",
+          "The demo is free to use, and all the code is open on GitHub. I will put the link in the chat now. The second QR code is my LinkedIn; please connect.",
         ],
+        do: ["Paste https://bankmanager.eps-demos.site into the meeting chat."],
       },
     },
     {
